@@ -24,7 +24,7 @@ void cpu_clock(){
             A = busca();
             std::cout << "LDA imediato: " << std::hex << (int)A << std::endl; // buscas printadas em hexadecimal
             break;
-        case 0x00: // BREK (break)
+        case 0x00: // BREaK (break)
             std::cout << "Programa finalizado." << std::endl;
             exit(0);
             break;
