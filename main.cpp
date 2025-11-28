@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cassert>
 #include "./memory/memory.hpp"
 #include "./cpu/mos6502r.hpp"
 
@@ -8,13 +9,16 @@ int main() {
 
     memory.write(0x0000, 0xA9); // LDA imediato
     memory.write(0x0001, 0x42); // seta o valor y
-    memory.write(0x0002, 0x00);
-
+    
+    cpu.cpuClock();
+    assert(cpu.A == 0x42);
+    assert(cpu.getFlag(ZERO) == false); // teste flag ZERO
+    assert(cpu.getFlag(NEGATIVE) == false); // teste flag NEGATIVE
     memory.dump(0x0000, 0x0010);
-
-    while(true){
+    //cpu.dumpState();
+    /*while(true){
         cpu.cpuClock();
-    }
+    }*/
 
     return 0;
 }
