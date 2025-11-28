@@ -2,12 +2,20 @@
 *.exe
 *.o
 *.obj
+*.a
 *.dll
 *.so
 *.out
 
-# VS Code
-.vscode/
+# Mantém tasks.json e launch.json
+.vscode/settings.json
+.vscode/extensions.json
+
+# ---- CMake ----
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
 
 # Temporary files
 *.log
@@ -16,3 +24,6 @@
 # OS files
 Thumbs.db
 .DS_Store
+
+# Ignore main executable (linux)
+main
