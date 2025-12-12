@@ -29,6 +29,14 @@ class Mos6502 {
         uint8_t busca();
 
         void LDA(uint16_t address); // Load Accumulator
+        void ADC(uint16_t address); // Add with Carry
+
+        // Helper to update Zero and Negative flags from a value
+        void updateZN(uint8_t value);
+        
+        void STA(uint16_t address); // Store Accumulator
+        void LDX(uint16_t address); // Load X register
+        void LDY(uint16_t address); // Load Y register
 
         uint16_t imm(); // modo imediato
         uint16_t zp(); // modo zero page

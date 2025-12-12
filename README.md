@@ -13,7 +13,7 @@ O projeto está em construção.
 
 ---
 
-## 🚀 Como Rodar o Projeto
+## Como Rodar o Projeto
 
 Este projeto foi configurado para ser facilmente executado no **VS Code**, em qualquer sistema operacional:
 
@@ -24,6 +24,7 @@ Este projeto foi configurado para ser facilmente executado no **VS Code**, em qu
 ### **Rodar com VS Code**
 1. Instale a extensão **C/C++** (Microsoft)
 2. Abra a pasta do projeto no VS Code
+3. Caso esteja no linux, rode o ./requirements.sh (para instalar dependências)
 3. Pressione: **Ctrl + Shift + B**
 4. O VS Code irá compilar e gerar o executável:
    - `emulator.exe` no Windows  
@@ -32,7 +33,7 @@ Este projeto foi configurado para ser facilmente executado no **VS Code**, em qu
 
 ---
 
-## 📌 Sobre o Projeto
+## Sobre o Projeto
 
 Atualmente, estamos construindo um **emulador modularizado**, começando pelo núcleo mais importante:  
 **a CPU 6507**, que é praticamente um MOS 6502 simplificado (usado no Atari).
@@ -56,7 +57,7 @@ Este é um projeto de aprendizado, mas que pode evoluir para algo grande.
 
 ---
 
-## 📅 Checklist do Progresso
+## Checklist do Progresso
 
 ### **✔ Etapa 1 — CPU Básica (concluído / iniciada)**
 - [x] Estrutura mínima do projeto (`main`, CPU, memória)
@@ -67,15 +68,44 @@ Este é um projeto de aprendizado, mas que pode evoluir para algo grande.
 - [x] Execução do opcode **0xA9 — LDA imediato**
 - [x] Loop básico de clock
 
-### **🔄 Etapa 2 — CPU Intermediária (em andamento)**
-- [ ] Flags da CPU (Zero, Negativo, Carry, Overflow…)
+### ** Etapa 2 — CPU Intermediária (em andamento)**
+- [x] Flags da CPU (Zero, Negativo, Carry, Overflow)
+- [ ] Flags da CPU (Break, Decimal, Unused, Interrupt)
 - [ ] Modos de endereçamento
 - [ ] OpCodes essenciais do 6502
 - [ ] Testes unitários para instruções
 
 ---
 
-## 💡 Objetivo Educacional
+## Instruções ja implementadas
+
+### ** LDA (Load Accumulator)**
+- [x] 0xA9 - Immediate
+- [x] 0xA5 - Zero Page
+- [x] 0xAD - Absolute
+
+### ** ADC (Add with carry)**
+- [x] 0x69 - Immediate
+- [x] 0x65 - Zero Page
+- [x] 0x6D - Absolute
+
+### ** STA (Storage Accumulator)**
+- [x] 0x85 - Zero Page
+- [x] 0x8D - Absolute
+
+### ** LDX (Load X Register)**
+- [x] 0xA2 - Immediate
+- [x] 0xA6 - Zero Page
+- [x] 0xAE - Absolute
+
+### ** LDY (Load Y Register)**
+- [x] 0xA0 - Immediate
+- [x] 0xA4 - Zero Page
+- [x] 0xAC - Absolute
+
+---
+
+## Objetivo Educacional
 
 O propósito deste repositório é servir como:
 
@@ -94,13 +124,13 @@ Esse tipo de projeto é extremamente valorizado e raro em currículos de estudan
 
 ---
 
-## 🤝 Contribuindo
+## Contribuindo
 
 Pull requests são bem-vindos.  
 Abra uma issue caso queira sugerir melhorias ou reportar bugs.
 
 ---
 
-## 📜 Licença
+## Licença
 
 MIT — livre para usar, estudar e modificar.

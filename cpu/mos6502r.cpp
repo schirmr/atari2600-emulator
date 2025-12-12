@@ -11,8 +11,42 @@ uint8_t Mos6502::busca(){
 
 void Mos6502::LDA(uint16_t address){ // Load Accumulator
     A = memory->read(address);
-    setFlag(ZERO, A == 0x00);
-    setFlag(NEGATIVE, A & 0x80);
+    updateZN(A);
+}
+
+void Mos6502::updateZN(uint8_t value){
+    setFlag(ZERO, value == 0x00);
+    setFlag(NEGATIVE, (value & 0x80) != 0);
+}
+
+void Mos6502::ADC(uint16_t address){
+    uint8_t m = memory->read(address);
+    uint16_t sum = (uint16_t)A + (uint16_t)m + (getFlag(CARRY) ? 1 : 0);
+
+    // Carry flag (1 or 0)
+    setFlag(CARRY, sum > 0xFF);
+
+    uint8_t result = (uint8_t)(sum & 0xFF); // Guarda apenas os 8 bits baixos
+
+    bool overflow = (~(A ^ m) & (A ^ result) & 0x80) != 0; // ~^(XNOR) p/ detectar overflow (0x80 = bit de sinal = 128)
+    setFlag(OVERFLOW, overflow);
+
+    A = result;
+    updateZN(A);
+}
+
+void Mos6502::STA(uint16_t address){
+    memory->write(address, A);
+}
+
+void Mos6502::LDX(uint16_t address){
+    X = memory->read(address);
+    updateZN(X);
+}
+
+void Mos6502::LDY(uint16_t address){
+    Y = memory->read(address);
+    updateZN(Y);
 }
 
 /* Modos de endereçamento */
@@ -74,6 +108,75 @@ void Mos6502::cpuClock(){
         case 0xA9: { // LDA imediato
             uint16_t addr = imm();
             LDA(addr);
+            break;
+        }
+
+        case 0x69: { // ADC imediato
+            uint16_t addr = imm();
+            ADC(addr);
+            break;
+        }
+
+        case 0x65: { // ADC zero page
+            uint16_t addr = zp();
+            ADC(addr);
+            break;
+        }
+
+        case 0x6D: { // ADC absoluto
+            uint16_t addr = abs();
+            ADC(addr);
+            break;
+        }
+
+        /* STA - Store Accumulator */
+        case 0x85: { // STA zero page
+            uint16_t addr = zp();
+            STA(addr);
+            break;
+        }
+
+        case 0x8D: { // STA absolute
+            uint16_t addr = abs();
+            STA(addr);
+            break;
+        }
+
+        /* LDX - Load X */
+        case 0xA2: { // LDX immediate
+            uint16_t addr = imm();
+            LDX(addr);
+            break;
+        }
+
+        case 0xA6: { // LDX zero page
+            uint16_t addr = zp();
+            LDX(addr);
+            break;
+        }
+
+        case 0xAE: { // LDX absolute
+            uint16_t addr = abs();
+            LDX(addr);
+            break;
+        }
+
+        /* LDY - Load Y */
+        case 0xA0: { // LDY immediate
+            uint16_t addr = imm();
+            LDY(addr);
+            break;
+        }
+
+        case 0xA4: { // LDY zero page
+            uint16_t addr = zp();
+            LDY(addr);
+            break;
+        }
+
+        case 0xAC: { // LDY absolute
+            uint16_t addr = abs();
+            LDY(addr);
             break;
         }
 

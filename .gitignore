@@ -27,3 +27,4 @@ Thumbs.db
 
 # Ignore main executable (linux)
 emulator
+/tests
