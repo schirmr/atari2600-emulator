@@ -1,11 +1,11 @@
 #include "mos6502r.hpp" // Processador MOS 6502 Reduzido ou 6507
 #include <iostream>
 
-Mos6502::Mos6502(Memory* mem){
+Mos6502::Mos6502(Memory* mem){ // Construtor
     this->memory = mem;
 }
 
-uint8_t Mos6502::busca(){
+uint8_t Mos6502::busca(){ // Busca o próximo opcode
     return memory->read(PC++);
 }
 
@@ -14,12 +14,12 @@ void Mos6502::LDA(uint16_t address){ // Load Accumulator
     updateZN(A);
 }
 
-void Mos6502::updateZN(uint8_t value){
+void Mos6502::updateZN(uint8_t value){ // Atualiza flags Zero e Negative
     setFlag(ZERO, value == 0x00);
     setFlag(NEGATIVE, (value & 0x80) != 0);
 }
 
-void Mos6502::IRQ() {
+void Mos6502::IRQ() { // Interrupt Request
     if (getFlag(INTERRUPT_DISABLE) == 1) return;
 
     push((PC >> 8) & 0xFF);
@@ -36,7 +36,7 @@ void Mos6502::IRQ() {
     cycles += 7; // Interrupções custam 7 ciclos
 }
 
-void Mos6502::NMI() {
+void Mos6502::NMI() { // Non-Maskable Interrupt
     push((PC >> 8) & 0xFF);
     push(PC & 0xFF);
     push(status | UNUSED);
@@ -47,85 +47,76 @@ void Mos6502::NMI() {
     cycles += 7;
 }
 
-void Mos6502::ADC(uint16_t address){
+void Mos6502::ADC(uint16_t address){ // Add with Carry
     uint8_t m = memory->read(address);
-    uint16_t carry_in = getFlag(CARRY) ? 1 : 0;
+    uint8_t carry_in = getFlag(CARRY) ? 1 : 0;
 
-    // Binário básico para calcular V conforme 6502 (mesmo em decimal)
-    uint16_t bin_sum = (uint16_t)A + (uint16_t)m + carry_in;
-    uint8_t bin_result = (uint8_t)(bin_sum & 0xFF);
-    bool overflow = (~(A ^ m) & (A ^ bin_result) & 0x80) != 0; // V é baseado no somatório binário
+    uint16_t bin_sum = (uint16_t)A + (uint16_t)m + (uint16_t)carry_in;
+    
+    bool overflow = (~(A ^ m) & (A ^ bin_sum) & 0x80) != 0;
+    setFlag(OVERFLOW, overflow);
 
-    if(getFlag(DECIMAL_MODE)){
-        // Ajuste BCD (modo decimal): soma 4 bits baixo e alto separadamente
-        uint8_t al = (A & 0x0F) + (m & 0x0F) + (uint8_t)carry_in;
-        uint8_t ah = (A >> 4) + (m >> 4);
+    updateZN((uint8_t)(bin_sum & 0xFF));
 
-        if(al > 9){
-            al += 6; // correção decimal
-            ah += 1;
+    if(getFlag(DECIMAL_MODE)){ 
+        uint16_t low = (A & 0x0F) + (m & 0x0F) + carry_in;
+        uint16_t high = (A & 0xF0) + (m & 0xF0);
+
+        if (low > 9) {
+            low += 6;
         }
-        if(ah > 9){
-            ah += 6; // correção decimal
+        
+        if (low > 0x0F) {
+            high += 0x10;
         }
+        
+        low &= 0x0F; 
 
-        uint16_t dec = ((uint16_t)ah << 4) | (al & 0x0F);
-        // Carry em BCD: se ah passou de 15 após correção
-        bool dec_carry = ah > 15;
-
-        setFlag(CARRY, dec_carry);
-        setFlag(OVERFLOW, overflow); // 6502 define V pelo somatório binário mesmo em decimal
-
-        A = (uint8_t)(dec & 0xFF);
-        updateZN(A);
+        bool decimal_carry = (high > 0x90); 
+        if (decimal_carry) {
+            high += 0x60;
+        }
+        
+        A = (low | (high & 0xF0)) & 0xFF;
+        
+        setFlag(CARRY, decimal_carry);
     } else {
-        // Modo binário normal
+        // Modo Binário Normal 
         setFlag(CARRY, bin_sum > 0xFF);
-        setFlag(OVERFLOW, overflow);
-        A = bin_result;
-        updateZN(A);
+        A = (uint8_t)(bin_sum & 0xFF);
     }
 }
 
 void Mos6502::SBC(uint16_t address){
     uint8_t m = memory->read(address);
-    uint8_t a = A;
     uint8_t carry_in = getFlag(CARRY) ? 1 : 0;
+    
+    uint16_t bin_diff = (uint16_t)A - (uint16_t)m - (uint16_t)(1 - carry_in);
+    
+    bool overflow = ((A ^ bin_diff) & (A ^ m) & 0x80) != 0;
+    setFlag(OVERFLOW, overflow);
 
-    // Binary subtraction core (for flags V and base result)
-    uint16_t subtrahend = (uint16_t)m + (carry_in ? 0 : 1);
-    uint16_t bin_diff = (uint16_t)a - subtrahend;
-    uint8_t bin_result = (uint8_t)(bin_diff & 0xFF);
-    bool overflow = ((a ^ bin_result) & (a ^ m) & 0x80) != 0;
+    setFlag(CARRY, !(bin_diff & 0xFF00)); 
+
+    updateZN((uint8_t)(bin_diff & 0xFF));
 
     if(getFlag(DECIMAL_MODE)){
-        // BCD mode subtraction
-        int16_t al = (int16_t)(a & 0x0F) - (int16_t)(m & 0x0F) - (carry_in ? 0 : 1);
-        int16_t ah = (int16_t)((a >> 4) & 0x0F) - (int16_t)((m >> 4) & 0x0F);
+        
+        uint16_t low = (A & 0x0F) - (m & 0x0F) - (1 - carry_in);
+        uint16_t high = (A >> 4) - (m >> 4);
 
-        if(al < 0){
-            al -= 6;
-            ah -= 1;
+        if (low & 0x10) {
+            low -= 6; 
+            high--;   
         }
-        bool noBorrow;
-        if(ah < 0){
-            ah -= 6;
-            noBorrow = false;
-        } else {
-            noBorrow = true;
+        
+        if (high & 0x10) {
+            high -= 6; 
         }
 
-        uint8_t dec = (uint8_t)(((ah & 0x0F) << 4) | (al & 0x0F));
-        A = dec;
-        setFlag(CARRY, noBorrow);
-        setFlag(OVERFLOW, overflow);
-        updateZN(A);
+        A = (low & 0x0F) | ((high << 4) & 0xF0);        
     } else {
-        // Binary mode
-        A = bin_result;
-        setFlag(CARRY, a >= (uint8_t)subtrahend);
-        setFlag(OVERFLOW, overflow);
-        updateZN(A);
+        A = (uint8_t)(bin_diff & 0xFF);
     }
 }
 
@@ -988,6 +979,34 @@ void Mos6502::cpuClock(){
             uint16_t addr = absx_no_cross();
             STA(addr);
             cycles+=4;
+            break;
+        }
+
+        case 0x81: { // STA (Indirect,X)
+            uint16_t addr = indx();
+            STA(addr);
+            cycles+=6;
+            break;
+        }
+
+        case 0x95: { // STA zero page,X
+            uint16_t addr = zpx();
+            STA(addr);
+            cycles+=4;
+            break;
+        }
+
+        case 0x91: { // STA (Indirect,Y)
+            uint16_t addr = indy();
+            STA(addr);
+            cycles+=6;
+            break;
+        }
+
+        case 0x99: { // STA absolute,Y
+            uint16_t addr = absy();
+            STA(addr);
+            cycles+=5;
             break;
         }
 

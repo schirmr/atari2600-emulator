@@ -79,7 +79,7 @@ Este é um projeto de aprendizado meu, mas que pode evoluir para algo maior.
 - [x] Modos de endereçamento completos
 - [x] Branches relativos funcionais
 
-### ** Etapa 3 — CPU Intermediária (em andamento)**
+### ** Etapa 3 — CPU Intermediária (concluiída)**
 - [x] NOP, INC/DEC (mem), INX/DEX, INY/DEY, transfers (TAX/TXA/TAY/TYA)
 - [x] `JMP` absoluto e indireto (com bug de página $xxFF preservado)
 - [x] BRK / RTI (stack e status corretos)
@@ -88,7 +88,37 @@ Este é um projeto de aprendizado meu, mas que pode evoluir para algo maior.
 - [x] `SBC` implementado
 - [x] Controle básico de ciclos e page crossing (+1)
 - [x] IRQ e NMI (estrutura base)
-- [ ] Passa ROMs de teste e homebrew simples
+- [x] Passa ROMs de teste e homebrew simples
+
+### ** Etapa 4 — Bus, RIOT e Mapeamento (atual)**
+- [ ] Espelhamento de RAM (Mirroring $00xx <-> $01xx para Stack)
+- [ ] Espelhamento de Registradores TIA ($00-$0D repetidos a cada 64 bytes)
+- [ ] Chip RIOT (6532): Implementação básica
+- [ ] RIOT Timers: `INTIM` e escrita em `TIM64T` (decremento por clock)
+- [ ] Leitura de Inputs básicos via RIOT (`SWCHA` / `SWCHB`)
+
+### ** Etapa 5 — TIA e Sincronização (atual)**
+- [ ] Sincronização de Clock CPU <-> TIA (Proporção 1:3)
+- [ ] Implementação do Registrador `WSYNC` (Halt CPU até fim da scanline)
+- [ ] Lógica de `VSYNC` e `VBLANK` (Controle de frame)
+- [ ] Estrutura básica de renderização (Scanline Loop)
+
+### ** Etapa 6 — Gráficos Básicos**
+- [ ] Janela de saída (SDL2 / SFML / OpenGL)
+- [ ] Renderização de Cor de Fundo (`COLUBK`)
+- [ ] Renderização de Playfield (`PF0`, `PF1`, `PF2`) com espelhamento/reflexão
+- [ ] Paleta de Cores NTSC/PAL
+
+### ** Etapa 7 — Sprites e Colisões (TIA Avançado)**
+- [ ] Renderização de Players (`GRP0`, `GRP1`) e Missiles
+- [ ] Posicionamento Fino (`HMOVE`, `RESPx`)
+- [ ] Registradores de Colisão de Hardware (`CxMx`, `CxP0`, etc.)
+- [ ] Lógica de prioridade de camadas (Playfield vs Player)
+
+### ** Etapa 8 — Áudio e Refinamentos**
+- [ ] Geração de Áudio (Canais `AUDC0`, `AUDF0`, `AUDV0`)
+- [ ] Suporte a Cartuchos com Bankswitching (>4KB)
+- [ ] Mapeamento de Teclado para Joystick
 
 ---
 

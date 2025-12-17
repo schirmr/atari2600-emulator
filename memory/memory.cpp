@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdio>
 #include <fstream>
+#include <cstring>
 #include "memory.hpp"
 
 Memory::Memory() {
