@@ -87,7 +87,7 @@ Este é um projeto de aprendizado meu, mas que pode evoluir para algo maior.
 - [x] Stack: PHA/PLA, PHP/PLP, TSX/TXS
 - [x] `SBC` implementado
 - [x] Controle básico de ciclos e page crossing (+1)
-- [ ] IRQ e NMI (estrutura base)
+- [x] IRQ e NMI (estrutura base)
 - [ ] Passa ROMs de teste e homebrew simples
 
 ---

@@ -19,6 +19,34 @@ void Mos6502::updateZN(uint8_t value){
     setFlag(NEGATIVE, (value & 0x80) != 0);
 }
 
+void Mos6502::IRQ() {
+    if (getFlag(INTERRUPT_DISABLE) == 1) return;
+
+    push((PC >> 8) & 0xFF);
+    push(PC & 0xFF);
+
+    push(status | UNUSED); 
+
+    // 3. Desabilita futuras interrupções
+    setFlag(INTERRUPT_DISABLE, true);
+
+    // 4. Lê o vetor de interrupção e pula para lá
+    uint16_t vector_addr = 0xFFFE;
+    PC = read_word(vector_addr); 
+    cycles += 7; // Interrupções custam 7 ciclos
+}
+
+void Mos6502::NMI() {
+    push((PC >> 8) & 0xFF);
+    push(PC & 0xFF);
+    push(status | UNUSED);
+    
+    setFlag(INTERRUPT_DISABLE, true);
+    
+    PC = read_word(0xFFFA); 
+    cycles += 7;
+}
+
 void Mos6502::ADC(uint16_t address){
     uint8_t m = memory->read(address);
     uint16_t carry_in = getFlag(CARRY) ? 1 : 0;
@@ -1296,15 +1324,15 @@ void Mos6502::cpuClock(){
         case 0x98: A = Y; updateZN(A); cycles+=2; break; // TYA
 
         case 0x60: { //  RTS (ReTurn from Subroutine)
-            uint8_t lo = memory->read(0x0100 + ++SP);
-            uint8_t hi = memory->read(0x0100 + ++SP);
+            uint8_t lo = pop();
+            uint8_t hi = pop();
             PC = ((hi << 8) | lo) + 1;
             cycles+=6;
             break;
         }
 
         case 0x48: { // PHA (push accumulator)
-            memory->write(0x0100 + SP--, A);
+            push(A);
             cycles+=3;
             break;
         }
@@ -1373,4 +1401,20 @@ void Mos6502::dumpState() const {
            (status >> 7) & 1, (status >> 6) & 1, (status >> 4) & 1,
            (status >> 3) & 1, (status >> 2) & 1, (status >> 1) & 1,
            status & 1);
+}
+
+void Mos6502::push(uint8_t value) {
+    memory->write(0x0100 + SP, value);
+    SP--;
+}
+
+uint8_t Mos6502::pop() {
+    SP++;
+    return memory->read(0x0100 + SP);
+}
+
+uint16_t Mos6502::read_word(uint16_t address) {
+    uint8_t lo = memory->read(address);
+    uint8_t hi = memory->read(address + 1);
+    return (hi << 8) | lo;
 }

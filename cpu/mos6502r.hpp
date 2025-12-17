@@ -51,7 +51,12 @@ class Mos6502 {
         void ORA(uint16_t address); // Bitwise OR with Accumulator
         void STX(uint16_t address); // Store X register
         void STY(uint16_t address); // Store Y register
+        void IRQ();              // Handle IRQ interrupt
+        void NMI();             // Handle NMI interrupt
         void reset(); // Reset CPU
+        void push(uint8_t value); // Push value onto stack
+        uint8_t pop(); // Pop value from stack
+        uint16_t read_word(uint16_t address); // Read a 16-bit word from memory
 
         // Helper to update Zero and Negative flags from a value
         void updateZN(uint8_t value);
