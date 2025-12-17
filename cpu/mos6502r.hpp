@@ -37,6 +37,7 @@ class Mos6502 {
         void CMP(uint16_t address); // Compare Accumulator
         void CPX(uint16_t address); // Compare X register
         void CPY(uint16_t address); // Compare Y register
+        void reset(); // Reset CPU
 
         // Helper to update Zero and Negative flags from a value
         void updateZN(uint8_t value);

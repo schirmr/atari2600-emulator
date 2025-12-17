@@ -59,7 +59,7 @@ Este é um projeto de aprendizado meu, mas que pode evoluir para algo maior.
 
 ## Progresso
 
-### **✔ Etapa 1 — CPU Básica (concluída / iniciada)**
+### ** Etapa 1 — CPU Básica (concluída)**
 - [x] Estrutura mínima do projeto (`main`, CPU, memória)
 - [x] 64KB de memória simulada
 - [x] Program Counter (PC)
@@ -68,12 +68,25 @@ Este é um projeto de aprendizado meu, mas que pode evoluir para algo maior.
 - [x] Execução do opcode **0xA9 — LDA imediato**
 - [x] Loop básico de clock
 
-### **Etapa 2 — CPU Intermediária (em andamento)**
-- [x] Flags da CPU (Zero, Negativo, Carry, Overflow)
-- [ ] Flags da CPU (Break, Decimal, Unused, Interrupt)
-- [ ] Modos de endereçamento
-- [ ] OpCodes essenciais do 6502
-- [ ] Testes unitários para instruções
+### ** Etapa 2 — CPU Basica/Intermediária (concluída)**
+- [x] Sistema completo de flags (N, Z, C, V, D, I, B, U)
+- [x] Controle de flags (CLC, SEC, CLI, SEI, CLV, CLD, SED)
+- [x] Flags corretas em ADC (binário e decimal)
+- [x] Flags corretas em CMP / CPX / CPY
+- [x] Flags corretas em BIT
+- [x] Flags corretas em shifts e rotates
+- [x] BRK / RTI (stack e status corretos)
+- [x] Modos de endereçamento completos
+- [x] Branches relativos funcionais
+
+### ** Etapa 3 — CPU Intermediária (em andamento)**
+- [ ] Stack completo (PHA, PLA, PHP, PLP)
+- [ ] Bits B e U corretos no stack
+- [ ] Instruções essenciais restantes (NOP, SBC, INC/DEC, INX/DEX, INY/DEY)
+- [ ] JMP indireto com bug de página ($xxFF)
+- [ ] Controle básico de ciclos e page crossing
+- [ ] IRQ e NMI (estrutura base)
+- [ ] Passa ROMs de teste e homebrew simples
 
 ---
 
@@ -100,11 +113,30 @@ Aqui estão as instruções de CPU que já implementei no núcleo (`mos6502r`), 
 
 - **Branch instructions (relative)**: `BPL` `0x10`, `BMI` `0x30`, `BVC` `0x50`, `BVS` `0x70`, `BCC` `0x90`, `BCS` `0xB0`, `BNE` `0xD0`, `BEQ` `0xF0`
 
-- **Status / control**: `SED` (`0xF8`) and `CLD` (`0xD8`) to set/clear Decimal Mode; `BRK` (`0x00`) implemented (pushes PC+1 and P, sets I, loads vector $FFFE/$FFFF).
+- **Status / control**: `SED` (`0xF8`) and `CLD` (`0xD8`) para set/clear Decimal Mode; `BRK` (`0x00`) implementado (empilha PC+1 e P, seta I, carrega vetor $FFFE/$FFFF).
+
+---
+
+## Flags da CPU (Status Register P)
+
+- N (Negativo): atualizado por `updateZN()` (ex.: `LDA`, `LDX`, `LDY`, `AND`, `ADC`, `ASL`) e por `CMP/CPX/CPY` (via resultado). Em `BIT`, reflete o bit 7 da memória.
+- V (Overflow): definido em `ADC` (soma binária) e em `BIT` (bit 6 da memória). `CLV` ainda não implementado.
+- B (Break): em `BRK`, B é setado apenas no valor de `P` empilhado (o status em runtime não mantém B setado).
+- D (Decimal Mode): controlado por `SED`/`CLD`. Quando ativo, `ADC` realiza soma em BCD; `V` continua baseado na soma binária.
+- I (Interrupt Disable): setado em `BRK`. `SEI/CLI` e `RTI` ainda não foram implementados.
+- Z (Zero): atualizado por `updateZN()`, por `CMP/CPX/CPY` (igualdade) e por `BIT` quando `(A & M) == 0`.
+- C (Carry): atualizado por `ADC` (binário/BCD), `ASL` (bit 7 original) e `CMP/CPX/CPY` (set se registrador >= M). Branches não alteram flags.
+- Bit 5 (Unused): inicializado como 1 (`0x20`) e preservado ao empilhar `P`.
 
 Observações:
-- Flags atualizadas apropriadamente onde aplicável (Z, N, C, V).  
-- Não estou contabilizando ciclos em runtime (a maior parte do comportamento funcional está implementadas).
+- Flags são atualizadas onde aplicável; `SEI/CLI`, `CLV` e `RTI` ainda não foram adicionados.
+- Ciclos/penalidades por crossing de página ainda não são contabilizados em runtime.
+
+---
+
+## Testes
+
+- Teste funcional 6502: o arquivo `6502_functional_test.bin` foi obtido do repositório de Klaus – https://github.com/Klaus2m5/6502_65C02_functional_tests – e será utilizado para validação mais ampla (créditos ao autor).
 
 ---
 

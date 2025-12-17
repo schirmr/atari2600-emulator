@@ -127,6 +127,19 @@ void Mos6502::BIT(uint16_t address){
     setFlag(OVERFLOW, (m & 0x40) != 0);
 }
 
+void Mos6502::reset(){
+    A = X = Y = 0;
+    SP = 0xFD;
+    status = 0x24; // I=1, bit unused=1
+
+    std::cout << "RESET chamado\n";
+
+    uint8_t lo = memory->read(0xFFFC);
+    uint8_t hi = memory->read(0xFFFD);
+    PC = (hi << 8) | lo;
+}
+
+
 /* Modos de endereçamento */
 
 uint16_t Mos6502::imm(){ // modo imediato
@@ -186,7 +199,7 @@ static inline uint16_t addSigned8(uint16_t base, uint8_t disp){
 
 void Mos6502::cpuClock(){
     uint8_t opcode = busca();
-    
+
     switch(opcode){
         case 0xA9: { // LDA imediato
             uint16_t addr = imm();
@@ -545,6 +558,20 @@ void Mos6502::cpuClock(){
             break;
         }
 
+        case 0x40: { // RTI - Return from Interrupt
+            // Pull processor status
+            status = memory->read(0x0100 + ++SP);
+            status &= ~BREAK;   // B sempre limpo após RTI
+            status |= UNUSED;   // Bit 5 sempre ligado
+
+            // Pull PC
+            uint8_t lo = memory->read(0x0100 + ++SP);
+            uint8_t hi = memory->read(0x0100 + ++SP);
+            PC = (hi << 8) | lo;
+            break;
+        }
+
+
         case 0xF8: { // SED - Set Decimal Mode
             setFlag(DECIMAL_MODE, true);
             break;
@@ -554,9 +581,67 @@ void Mos6502::cpuClock(){
             break;
         }
 
+        case 0x4C: { // JMP Absolute
+            PC = abs();
+            break;
+        }
+
+        case 0x20: { // JSR (Jump to Sub Routine)
+            uint16_t addr = abs();
+            uint16_t ret = PC - 1;
+
+            memory->write(0x0100 + SP--, (ret >> 8) & 0xFF);
+            memory->write(0x0100 + SP--, ret & 0xFF);
+
+            PC = addr;
+            break;
+        }
+
+        case 0xEA: { // NOP
+            break;
+        }
+
+        // Flags básicos
+        case 0x18: setFlag(CARRY, false); break; // CLC
+        case 0x38: setFlag(CARRY, true);  break; // SEC
+        case 0x58: setFlag(INTERRUPT_DISABLE, false); break; // CLI
+        case 0x78: setFlag(INTERRUPT_DISABLE, true);  break; // SEI
+        case 0xB8: setFlag(OVERFLOW, false); break; // CLV
+        // Incrementos / Decrementos
+        case 0xE8: X++; updateZN(X); break; // INX
+        case 0xCA: X--; updateZN(X); break; // DEX
+        case 0xC8: Y++; updateZN(Y); break; // INY
+        case 0x88: Y--; updateZN(Y); break; // DEY
+        // Transferências
+        case 0xAA: X = A; updateZN(X); break; // TAX
+        case 0x8A: A = X; updateZN(A); break; // TXA
+        case 0xA8: Y = A; updateZN(Y); break; // TAY
+        case 0x98: A = Y; updateZN(A); break; // TYA
+
+        case 0x60: { //  RTS (ReTurn from Subroutine)
+            uint8_t lo = memory->read(0x0100 + ++SP);
+            uint8_t hi = memory->read(0x0100 + ++SP);
+            PC = ((hi << 8) | lo) + 1;
+            break;
+        }
+
+        case 0x48: { // PHA (push accumulator)
+            memory->write(0x0100 + SP--, A);
+            break;
+        }
+
+        case 0x68: { // PLA (pulll accumulator)
+            A = memory->read(0x0100 + ++SP);
+            updateZN(A);
+            break;
+        }
+
+
+
         default:
             std::cerr << "Opcode desconhecido: $" << std::hex << (int)opcode << std::endl;
-            break;
+            dumpState();
+            exit(1);
     }
 }
 
