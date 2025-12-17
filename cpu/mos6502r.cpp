@@ -59,6 +59,48 @@ void Mos6502::ADC(uint16_t address){
     }
 }
 
+void Mos6502::SBC(uint16_t address){
+    uint8_t m = memory->read(address);
+    uint8_t a = A;
+    uint8_t carry_in = getFlag(CARRY) ? 1 : 0;
+
+    // Binary subtraction core (for flags V and base result)
+    uint16_t subtrahend = (uint16_t)m + (carry_in ? 0 : 1);
+    uint16_t bin_diff = (uint16_t)a - subtrahend;
+    uint8_t bin_result = (uint8_t)(bin_diff & 0xFF);
+    bool overflow = ((a ^ bin_result) & (a ^ m) & 0x80) != 0;
+
+    if(getFlag(DECIMAL_MODE)){
+        // BCD mode subtraction
+        int16_t al = (int16_t)(a & 0x0F) - (int16_t)(m & 0x0F) - (carry_in ? 0 : 1);
+        int16_t ah = (int16_t)((a >> 4) & 0x0F) - (int16_t)((m >> 4) & 0x0F);
+
+        if(al < 0){
+            al -= 6;
+            ah -= 1;
+        }
+        bool noBorrow;
+        if(ah < 0){
+            ah -= 6;
+            noBorrow = false;
+        } else {
+            noBorrow = true;
+        }
+
+        uint8_t dec = (uint8_t)(((ah & 0x0F) << 4) | (al & 0x0F));
+        A = dec;
+        setFlag(CARRY, noBorrow);
+        setFlag(OVERFLOW, overflow);
+        updateZN(A);
+    } else {
+        // Binary mode
+        A = bin_result;
+        setFlag(CARRY, a >= (uint8_t)subtrahend);
+        setFlag(OVERFLOW, overflow);
+        updateZN(A);
+    }
+}
+
 void Mos6502::STA(uint16_t address){
     memory->write(address, A);
 }
@@ -118,6 +160,56 @@ void Mos6502::ASL(uint16_t address){
     updateZN(res);
 }
 
+void Mos6502::LSR_A(){
+    setFlag(CARRY, (A & 0x01) != 0);
+    A = (uint8_t)(A >> 1);
+    updateZN(A);
+}
+
+void Mos6502::LSR(uint16_t address){
+    uint8_t v = memory->read(address);
+    setFlag(CARRY, (v & 0x01) != 0);
+    uint8_t res = (uint8_t)(v >> 1);
+    memory->write(address, res);
+    updateZN(res);
+}
+
+void Mos6502::ROL_A(){
+    uint8_t carry_in = getFlag(CARRY) ? 1 : 0;
+    bool new_carry = (A & 0x80) != 0;
+    A = (uint8_t)(((A << 1) & 0xFF) | carry_in);
+    setFlag(CARRY, new_carry);
+    updateZN(A);
+}
+
+void Mos6502::ROL(uint16_t address){
+    uint8_t v = memory->read(address);
+    uint8_t carry_in = getFlag(CARRY) ? 1 : 0;
+    bool new_carry = (v & 0x80) != 0;
+    uint8_t res = (uint8_t)(((v << 1) & 0xFF) | carry_in);
+    memory->write(address, res);
+    setFlag(CARRY, new_carry);
+    updateZN(res);
+}
+
+void Mos6502::ROR_A(){
+    uint8_t carry_in = getFlag(CARRY) ? 1 : 0;
+    bool new_carry = (A & 0x01) != 0;
+    A = (uint8_t)((A >> 1) | (carry_in << 7));
+    setFlag(CARRY, new_carry);
+    updateZN(A);
+}
+
+void Mos6502::ROR(uint16_t address){
+    uint8_t v = memory->read(address);
+    uint8_t carry_in = getFlag(CARRY) ? 1 : 0;
+    bool new_carry = (v & 0x01) != 0;
+    uint8_t res = (uint8_t)((v >> 1) | (carry_in << 7));
+    memory->write(address, res);
+    setFlag(CARRY, new_carry);
+    updateZN(res);
+}
+
 void Mos6502::BIT(uint16_t address){
     uint8_t m = memory->read(address);
     // Z flag: (A & M) == 0
@@ -125,6 +217,40 @@ void Mos6502::BIT(uint16_t address){
     // N and V reflect bits 7 and 6 of memory
     setFlag(NEGATIVE, (m & 0x80) != 0);
     setFlag(OVERFLOW, (m & 0x40) != 0);
+}
+
+void Mos6502::DEC(uint16_t address){
+    uint8_t v = memory->read(address);
+    v = (uint8_t)(v - 1);
+    memory->write(address, v);
+    updateZN(v);
+}
+
+void Mos6502::INC(uint16_t address){
+    uint8_t v = memory->read(address);
+    v = (uint8_t)(v + 1);
+    memory->write(address, v);
+    updateZN(v);
+}
+
+void Mos6502::EOR(uint16_t address){
+    uint8_t m = memory->read(address);
+    A = (uint8_t)(A ^ m);
+    updateZN(A);
+}
+
+void Mos6502::ORA(uint16_t address){
+    uint8_t m = memory->read(address);
+    A = (uint8_t)(A | m);
+    updateZN(A);
+}
+
+void Mos6502::STX(uint16_t address){
+    memory->write(address, X);
+}
+
+void Mos6502::STY(uint16_t address){
+    memory->write(address, Y);
 }
 
 void Mos6502::reset(){
@@ -160,6 +286,11 @@ uint16_t Mos6502::abs(){ // modo absoluto
 uint16_t Mos6502::zpx() { // zero-page wrap
     uint8_t addr = memory->read(PC++);
     return (addr + X) & 0xFF; 
+}
+
+uint16_t Mos6502::zpy() { // zero-page wrap using Y
+    uint8_t addr = memory->read(PC++);
+    return (addr + Y) & 0xFF;
 }
 
 uint16_t Mos6502::absx() {
@@ -212,6 +343,48 @@ void Mos6502::cpuClock(){
             ASL_A();
             break;
         }
+
+        // ORA - OR with Accumulator
+        case 0x09: { // ORA immediate
+            uint16_t addr = imm();
+            ORA(addr);
+            break;
+        }
+        case 0x05: { // ORA zero page
+            uint16_t addr = zp();
+            ORA(addr);
+            break;
+        }
+        case 0x15: { // ORA zero page,X
+            uint16_t addr = zpx();
+            ORA(addr);
+            break;
+        }
+        case 0x0D: { // ORA absolute
+            uint16_t addr = abs();
+            ORA(addr);
+            break;
+        }
+        case 0x1D: { // ORA absolute,X
+            uint16_t addr = absx();
+            ORA(addr);
+            break;
+        }
+        case 0x19: { // ORA absolute,Y
+            uint16_t addr = absy();
+            ORA(addr);
+            break;
+        }
+        case 0x01: { // ORA (Indirect,X)
+            uint16_t addr = indx();
+            ORA(addr);
+            break;
+        }
+        case 0x11: { // ORA (Indirect,Y)
+            uint16_t addr = indy();
+            ORA(addr);
+            break;
+        }
         case 0x06: { // ASL Zero Page
             uint16_t addr = zp();
             ASL(addr);
@@ -233,6 +406,84 @@ void Mos6502::cpuClock(){
             break;
         }
 
+        // LSR - Logical Shift Right
+        case 0x4A: { // LSR A (Accumulator)
+            LSR_A();
+            break;
+        }
+        case 0x46: { // LSR Zero Page
+            uint16_t addr = zp();
+            LSR(addr);
+            break;
+        }
+        case 0x56: { // LSR Zero Page,X
+            uint16_t addr = zpx();
+            LSR(addr);
+            break;
+        }
+        case 0x4E: { // LSR Absolute
+            uint16_t addr = abs();
+            LSR(addr);
+            break;
+        }
+        case 0x5E: { // LSR Absolute,X
+            uint16_t addr = absx();
+            LSR(addr);
+            break;
+        }
+
+        // ROL - Rotate Left
+        case 0x2A: { // ROL A (Accumulator)
+            ROL_A();
+            break;
+        }
+        case 0x26: { // ROL Zero Page
+            uint16_t addr = zp();
+            ROL(addr);
+            break;
+        }
+        case 0x36: { // ROL Zero Page,X
+            uint16_t addr = zpx();
+            ROL(addr);
+            break;
+        }
+        case 0x2E: { // ROL Absolute
+            uint16_t addr = abs();
+            ROL(addr);
+            break;
+        }
+        case 0x3E: { // ROL Absolute,X
+            uint16_t addr = absx();
+            ROL(addr);
+            break;
+        }
+
+        // ROR - Rotate Right
+        case 0x6A: { // ROR A (Accumulator)
+            ROR_A();
+            break;
+        }
+        case 0x66: { // ROR Zero Page
+            uint16_t addr = zp();
+            ROR(addr);
+            break;
+        }
+        case 0x76: { // ROR Zero Page,X
+            uint16_t addr = zpx();
+            ROR(addr);
+            break;
+        }
+        case 0x6E: { // ROR Absolute
+            uint16_t addr = abs();
+            ROR(addr);
+            break;
+        }
+        case 0x7E: { // ROR Absolute,X
+            uint16_t addr = absx();
+            ROR(addr);
+            break;
+        }
+
         // BIT - Test Bits 
         case 0x24: { // BIT Zero Page
             uint16_t addr = zp();
@@ -242,6 +493,48 @@ void Mos6502::cpuClock(){
         case 0x2C: { // BIT Absolute
             uint16_t addr = abs();
             BIT(addr);
+            break;
+        }
+
+        // EOR - Exclusive OR with Accumulator
+        case 0x49: { // EOR immediate
+            uint16_t addr = imm();
+            EOR(addr);
+            break;
+        }
+        case 0x45: { // EOR zero page
+            uint16_t addr = zp();
+            EOR(addr);
+            break;
+        }
+        case 0x55: { // EOR zero page,X
+            uint16_t addr = zpx();
+            EOR(addr);
+            break;
+        }
+        case 0x4D: { // EOR absolute
+            uint16_t addr = abs();
+            EOR(addr);
+            break;
+        }
+        case 0x5D: { // EOR absolute,X
+            uint16_t addr = absx();
+            EOR(addr);
+            break;
+        }
+        case 0x59: { // EOR absolute,Y
+            uint16_t addr = absy();
+            EOR(addr);
+            break;
+        }
+        case 0x41: { // EOR (Indirect,X)
+            uint16_t addr = indx();
+            EOR(addr);
+            break;
+        }
+        case 0x51: { // EOR (Indirect,Y)
+            uint16_t addr = indy();
+            EOR(addr);
             break;
         }
 
@@ -342,6 +635,50 @@ void Mos6502::cpuClock(){
         case 0x31: { // AND (Indirect,Y)
             uint16_t addr = indy();
             AND(addr);
+            break;
+        }
+
+        // DEC - Decrement Memory
+        case 0xC6: { // DEC Zero Page
+            uint16_t addr = zp();
+            DEC(addr);
+            break;
+        }
+        case 0xD6: { // DEC Zero Page,X
+            uint16_t addr = zpx();
+            DEC(addr);
+            break;
+        }
+        case 0xCE: { // DEC Absolute
+            uint16_t addr = abs();
+            DEC(addr);
+            break;
+        }
+        case 0xDE: { // DEC Absolute,X
+            uint16_t addr = absx();
+            DEC(addr);
+            break;
+        }
+
+        // INC - Increment Memory
+        case 0xE6: { // INC Zero Page
+            uint16_t addr = zp();
+            INC(addr);
+            break;
+        }
+        case 0xF6: { // INC Zero Page,X
+            uint16_t addr = zpx();
+            INC(addr);
+            break;
+        }
+        case 0xEE: { // INC Absolute
+            uint16_t addr = abs();
+            INC(addr);
+            break;
+        }
+        case 0xFE: { // INC Absolute,X
+            uint16_t addr = absx();
+            INC(addr);
             break;
         }
 
@@ -469,6 +806,48 @@ void Mos6502::cpuClock(){
             break;
         }
 
+        // SBC - Subtract with Carry
+        case 0xE9: { // SBC immediate
+            uint16_t addr = imm();
+            SBC(addr);
+            break;
+        }
+        case 0xE5: { // SBC zero page
+            uint16_t addr = zp();
+            SBC(addr);
+            break;
+        }
+        case 0xF5: { // SBC zero page,X
+            uint16_t addr = zpx();
+            SBC(addr);
+            break;
+        }
+        case 0xED: { // SBC absolute
+            uint16_t addr = abs();
+            SBC(addr);
+            break;
+        }
+        case 0xFD: { // SBC absolute,X
+            uint16_t addr = absx();
+            SBC(addr);
+            break;
+        }
+        case 0xF9: { // SBC absolute,Y
+            uint16_t addr = absy();
+            SBC(addr);
+            break;
+        }
+        case 0xE1: { // SBC (Indirect,X)
+            uint16_t addr = indx();
+            SBC(addr);
+            break;
+        }
+        case 0xF1: { // SBC (Indirect,Y)
+            uint16_t addr = indy();
+            SBC(addr);
+            break;
+        }
+
         // STA - Store Accumulator
         case 0x85: { // STA zero page
             uint16_t addr = zp();
@@ -479,6 +858,40 @@ void Mos6502::cpuClock(){
         case 0x8D: { // STA absolute
             uint16_t addr = abs();
             STA(addr);
+            break;
+        }
+
+        // STX - Store X Register
+        case 0x86: { // STX zero page
+            uint16_t addr = zp();
+            STX(addr);
+            break;
+        }
+        case 0x96: { // STX zero page,Y
+            uint16_t addr = zpy();
+            STX(addr);
+            break;
+        }
+        case 0x8E: { // STX absolute
+            uint16_t addr = abs();
+            STX(addr);
+            break;
+        }
+
+        // STY - Store Y Register
+        case 0x84: { // STY zero page
+            uint16_t addr = zp();
+            STY(addr);
+            break;
+        }
+        case 0x94: { // STY zero page,X
+            uint16_t addr = zpx();
+            STY(addr);
+            break;
+        }
+        case 0x8C: { // STY absolute
+            uint16_t addr = abs();
+            STY(addr);
             break;
         }
 
@@ -501,6 +914,18 @@ void Mos6502::cpuClock(){
             break;
         }
 
+        case 0xB6: { // LDX zero page,Y
+            uint16_t addr = zpy();
+            LDX(addr);
+            break;
+        }
+
+        case 0xBE: { // LDX absolute,Y
+            uint16_t addr = absy();
+            LDX(addr);
+            break;
+        }
+
         // LDY - Load Y
         case 0xA0: { // LDY immediate
             uint16_t addr = imm();
@@ -519,6 +944,16 @@ void Mos6502::cpuClock(){
             LDY(addr);
             break;
         }
+        case 0xB4: { // LDY zero page,X
+            uint16_t addr = zpx();
+            LDY(addr);
+            break;
+        }
+        case 0xBC: { // LDY absolute,X
+            uint16_t addr = absx();
+            LDY(addr);
+            break;
+        }
 
         case 0xA5: { // LDA zero page
             uint16_t addr = zp();
@@ -528,6 +963,31 @@ void Mos6502::cpuClock(){
     
         case 0xAD: { // LDA absoluto
             uint16_t addr = abs();
+            LDA(addr);
+            break;
+        }
+        case 0xB5: { // LDA zero page,X
+            uint16_t addr = zpx();
+            LDA(addr);
+            break;
+        }
+        case 0xBD: { // LDA absolute,X
+            uint16_t addr = absx();
+            LDA(addr);
+            break;
+        }
+        case 0xB9: { // LDA absolute,Y
+            uint16_t addr = absy();
+            LDA(addr);
+            break;
+        }
+        case 0xA1: { // LDA (Indirect,X)
+            uint16_t addr = indx();
+            LDA(addr);
+            break;
+        }
+        case 0xB1: { // LDA (Indirect,Y)
+            uint16_t addr = indy();
             LDA(addr);
             break;
         }
@@ -586,6 +1046,14 @@ void Mos6502::cpuClock(){
             break;
         }
 
+        case 0x6C: { // JMP Indirect (with 6502 page-wrap bug)
+            uint16_t ptr = abs();
+            uint8_t lo = memory->read(ptr);
+            uint8_t hi = memory->read((ptr & 0xFF00) | ((ptr + 1) & 0x00FF));
+            PC = (uint16_t)((hi << 8) | lo);
+            break;
+        }
+
         case 0x20: { // JSR (Jump to Sub Routine)
             uint16_t addr = abs();
             uint16_t ret = PC - 1;
@@ -633,6 +1101,30 @@ void Mos6502::cpuClock(){
         case 0x68: { // PLA (pulll accumulator)
             A = memory->read(0x0100 + ++SP);
             updateZN(A);
+            break;
+        }
+
+        case 0x9A: { // TXS (Transfer X to Stack Pointer)
+            SP = X;
+            break;
+        }
+
+        case 0xBA: { // TSX (Transfer Stack Pointer to X)
+            X = SP;
+            updateZN(X);
+            break;
+        }
+
+        case 0x08: { // PHP (Push Processor Status)
+            uint8_t pushed = status | BREAK | UNUSED;
+            memory->write(0x0100 + SP--, pushed);
+            break;
+        }
+
+        case 0x28: { // PLP (Pull Processor Status)
+            status = memory->read(0x0100 + ++SP);
+            status &= ~BREAK;
+            status |= UNUSED;
             break;
         }
 

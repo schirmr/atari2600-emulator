@@ -80,11 +80,13 @@ Este é um projeto de aprendizado meu, mas que pode evoluir para algo maior.
 - [x] Branches relativos funcionais
 
 ### ** Etapa 3 — CPU Intermediária (em andamento)**
-- [ ] Stack completo (PHA, PLA, PHP, PLP)
-- [ ] Bits B e U corretos no stack
-- [ ] Instruções essenciais restantes (NOP, SBC, INC/DEC, INX/DEX, INY/DEY)
-- [ ] JMP indireto com bug de página ($xxFF)
-- [ ] Controle básico de ciclos e page crossing
+- [x] NOP, INC/DEC (mem), INX/DEX, INY/DEY, transfers (TAX/TXA/TAY/TYA)
+- [x] `JMP` absoluto e indireto (com bug de página $xxFF preservado)
+- [x] BRK / RTI (stack e status corretos)
+- [x] Flags e controle: CLC/SEC, CLI/SEI, CLD/SED, CLV
+- [x] Stack: PHA/PLA, PHP/PLP, TSX/TXS
+- [x] `SBC` implementado
+- [ ] Controle básico de ciclos e page crossing (+1)
 - [ ] IRQ e NMI (estrutura base)
 - [ ] Passa ROMs de teste e homebrew simples
 
@@ -94,43 +96,67 @@ Este é um projeto de aprendizado meu, mas que pode evoluir para algo maior.
 
 Aqui estão as instruções de CPU que já implementei no núcleo (`mos6502r`), com os opcodes suportados:
 
-- **LDA (Load Accumulator)**: `0xA9` (Immediate), `0xA5` (Zero Page), `0xAD` (Absolute)
-- **STA (Store Accumulator)**: `0x85` (Zero Page), `0x8D` (Absolute)
-- **LDX (Load X)**: `0xA2` (Immediate), `0xA6` (Zero Page), `0xAE` (Absolute)
-- **LDY (Load Y)**: `0xA0` (Immediate), `0xA4` (Zero Page), `0xAC` (Absolute)
+- **LDA (Load Accumulator)**: `A9` (Immediate), `A5` (Zero Page), `B5` (Zero Page,X), `AD` (Absolute), `BD` (Absolute,X), `B9` (Absolute,Y), `A1` (Indirect,X), `B1` (Indirect,Y)
+- **STA (Store Accumulator)**: `85` (Zero Page), `95` (Zero Page,X), `8D` (Absolute), `9D` (Absolute,X), `99` (Absolute,Y), `81` (Indirect,X), `91` (Indirect,Y)
+- **LDX (Load X)**: `A2` (Immediate), `A6` (Zero Page), `B6` (Zero Page,Y), `AE` (Absolute), `BE` (Absolute,Y)
+- **LDY (Load Y)**: `A0` (Immediate), `A4` (Zero Page), `B4` (Zero Page,X), `AC` (Absolute), `BC` (Absolute,X)
+ - **STX (Store X)**: `86` (Zero Page), `96` (Zero Page,Y), `8E` (Absolute)
+ - **STY (Store Y)**: `84` (Zero Page), `94` (Zero Page,X), `8C` (Absolute)
 
-- **ADC (Add with Carry)**: `0x69` (Immediate), `0x65` (Zero Page), `0x75` (Zero Page,X), `0x6D` (Absolute), `0x7D` (Absolute,X), `0x79` (Absolute,Y), `0x61` (Indirect,X), `0x71` (Indirect,Y).  
+- **ADC (Add with Carry)**: `69` (Immediate), `65` (Zero Page), `75` (Zero Page,X), `6D` (Absolute), `7D` (Absolute,X), `79` (Absolute,Y), `61` (Indirect,X), `71` (Indirect,Y).  
    - Suporta modo decimal (BCD) quando a flag `D` está setada (`SED`/`CLD` disponíveis).
+ - **SBC (Subtract with Carry)**: `E9` (Immediate), `E5` (Zero Page), `F5` (Zero Page,X), `ED` (Absolute), `FD` (Absolute,X), `F9` (Absolute,Y), `E1` (Indirect,X), `F1` (Indirect,Y).  
+   - Suporta modo decimal (BCD): `C=1` indica sem empréstimo; `V` baseado na operação binária.
 
-- **AND (Bitwise AND with A)**: `0x29` (Immediate), `0x25` (Zero Page), `0x35` (Zero Page,X), `0x2D` (Absolute), `0x3D` (Absolute,X), `0x39` (Absolute,Y), `0x21` (Indirect,X), `0x31` (Indirect,Y)
+- **AND (Bitwise AND with A)**: `29` (Immediate), `25` (Zero Page), `35` (Zero Page,X), `2D` (Absolute), `3D` (Absolute,X), `39` (Absolute,Y), `21` (Indirect,X), `31` (Indirect,Y)
+- **EOR (Exclusive-OR)**: `49` (Immediate), `45` (Zero Page), `55` (Zero Page,X), `4D` (Absolute), `5D` (Absolute,X), `59` (Absolute,Y), `41` (Indirect,X), `51` (Indirect,Y)
+ - **ORA (OR with A)**: `09` (Immediate), `05` (Zero Page), `15` (Zero Page,X), `0D` (Absolute), `1D` (Absolute,X), `19` (Absolute,Y), `01` (Indirect,X), `11` (Indirect,Y)
 
-- **ASL (Arithmetic Shift Left)**: `0x0A` (Accumulator), `0x06` (Zero Page), `0x16` (Zero Page,X), `0x0E` (Absolute), `0x1E` (Absolute,X)
-- **BIT (Test Bits)**: `0x24` (Zero Page), `0x2C` (Absolute)
+- **ASL (Arithmetic Shift Left)**: `0A` (Accumulator), `06` (Zero Page), `16` (Zero Page,X), `0E` (Absolute), `1E` (Absolute,X)
+- **LSR (Logical Shift Right)**: `4A` (Accumulator), `46` (Zero Page), `56` (Zero Page,X), `4E` (Absolute), `5E` (Absolute,X)
+ - **ROL (Rotate Left)**: `2A` (Accumulator), `26` (Zero Page), `36` (Zero Page,X), `2E` (Absolute), `3E` (Absolute,X)
+ - **ROR (Rotate Right)**: `6A` (Accumulator), `66` (Zero Page), `76` (Zero Page,X), `6E` (Absolute), `7E` (Absolute,X)
+- **BIT (Test Bits)**: `24` (Zero Page), `2C` (Absolute)
 
-- **CMP (Compare A)**: `0xC9` (Immediate), `0xC5` (Zero Page), `0xD5` (Zero Page,X), `0xCD` (Absolute), `0xDD` (Absolute,X), `0xD9` (Absolute,Y), `0xC1` (Indirect,X), `0xD1` (Indirect,Y)
-- **CPX (Compare X)**: `0xE0` (Immediate), `0xE4` (Zero Page), `0xEC` (Absolute)
-- **CPY (Compare Y)**: `0xC0` (Immediate), `0xC4` (Zero Page), `0xCC` (Absolute)
+- **CMP (Compare A)**: `C9` (Immediate), `C5` (Zero Page), `D5` (Zero Page,X), `CD` (Absolute), `DD` (Absolute,X), `D9` (Absolute,Y), `C1` (Indirect,X), `D1` (Indirect,Y)
+- **CPX (Compare X)**: `E0` (Immediate), `E4` (Zero Page), `EC` (Absolute)
+- **CPY (Compare Y)**: `C0` (Immediate), `C4` (Zero Page), `CC` (Absolute)
+- **DEC (Decrement Memory)**: `C6` (Zero Page), `D6` (Zero Page,X), `CE` (Absolute), `DE` (Absolute,X)
+- **INC (Increment Memory)**: `E6` (Zero Page), `F6` (Zero Page,X), `EE` (Absolute), `FE` (Absolute,X)
 
-- **Branch instructions (relative)**: `BPL` `0x10`, `BMI` `0x30`, `BVC` `0x50`, `BVS` `0x70`, `BCC` `0x90`, `BCS` `0xB0`, `BNE` `0xD0`, `BEQ` `0xF0`
+- **Branch instructions (relative)**: `BPL` `10`, `BMI` `30`, `BVC` `50`, `BVS` `70`, `BCC` `90`, `BCS` `B0`, `BNE` `D0`, `BEQ` `F0`
 
-- **Status / control**: `SED` (`0xF8`) and `CLD` (`0xD8`) para set/clear Decimal Mode; `BRK` (`0x00`) implementado (empilha PC+1 e P, seta I, carrega vetor $FFFE/$FFFF).
+- **JMP/JSR/RTS/RTI**: `JMP` `4C` (Absolute), `6C` (Indirect c/ wrap), `JSR` `20`, `RTS` `60`, `RTI` `40`
+- **Status / control**: `CLC` `18`, `SEC` `38`, `CLI` `58`, `SEI` `78`, `CLV` `B8`, `CLD` `D8`, `SED` `F8`, `BRK` `00` (empilha PC+1 e P|B, seta I, carrega vetor $FFFE/$FFFF)
+ - **NOP**: `EA`
+ - **Register / Transfer / Inc-Dec**: `TAX` `AA`, `TXA` `8A`, `TAY` `A8`, `TYA` `98`, `INX` `E8`, `DEX` `CA`, `INY` `C8`, `DEY` `88`
 
 ---
 
 ## Flags da CPU (Status Register P)
 
 - N (Negativo): atualizado por `updateZN()` (ex.: `LDA`, `LDX`, `LDY`, `AND`, `ADC`, `ASL`) e por `CMP/CPX/CPY` (via resultado). Em `BIT`, reflete o bit 7 da memória.
-- V (Overflow): definido em `ADC` (soma binária) e em `BIT` (bit 6 da memória). `CLV` ainda não implementado.
+- V (Overflow): definido em `ADC` (soma binária) e em `BIT` (bit 6 da memória). `CLV` implementado.
 - B (Break): em `BRK`, B é setado apenas no valor de `P` empilhado (o status em runtime não mantém B setado).
 - D (Decimal Mode): controlado por `SED`/`CLD`. Quando ativo, `ADC` realiza soma em BCD; `V` continua baseado na soma binária.
-- I (Interrupt Disable): setado em `BRK`. `SEI/CLI` e `RTI` ainda não foram implementados.
+- I (Interrupt Disable): `SEI/CLI` e `BRK` alteram I; `RTI` restaura o status anterior.
 - Z (Zero): atualizado por `updateZN()`, por `CMP/CPX/CPY` (igualdade) e por `BIT` quando `(A & M) == 0`.
 - C (Carry): atualizado por `ADC` (binário/BCD), `ASL` (bit 7 original) e `CMP/CPX/CPY` (set se registrador >= M). Branches não alteram flags.
 - Bit 5 (Unused): inicializado como 1 (`0x20`) e preservado ao empilhar `P`.
 
 Observações:
-- Flags são atualizadas onde aplicável; `SEI/CLI`, `CLV` e `RTI` ainda não foram adicionados.
+- Flags são atualizadas onde aplicável; `RTI` limpa `B` e mantém o bit 5 (`UNUSED`) ligado ao restaurar `P`.
 - Ciclos/penalidades por crossing de página ainda não são contabilizados em runtime.
+
+---
+
+## Comportamentos Importantes (6502)
+
+- Zero Page wrap-around: endereçamento `($zz,X)`/`$zz,X`/`$zz,Y` em zero page faz wrap de 8 bits. Ex.: `LDA $80,X` com `X=$FF` acessa `$7F` (não `$017F`). Implementado em `zpx()`/`zpy()`.
+- `JMP ($addr)` bug de página: ao apontar para `$xxFF`, o byte alto é lido de `$xx00` (wrap). Implementado no `JMP` indireto.
+- Program Counter: `busca()` avança `PC` ao ler o opcode; os modos de endereçamento avançam `PC` pelos operandos. Branches usam deslocamento com sinal relativo ao endereço seguinte.
+- Pilha e falsos retornos: `JSR` empilha `PC-1` (alto depois baixo); `RTS` soma `+1` ao retornar. Ao forjar retornos (tabelas com `RTS`), empilhe endereço-1 e sempre empurre MSB primeiro.
+- Tempos de execução: este núcleo não contabiliza ciclos; instruções marcadas com `+` costumam custar +1 ciclo quando há crossing de página (não modelado aqui).
 
 ---
 

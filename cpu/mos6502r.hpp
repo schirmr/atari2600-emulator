@@ -30,13 +30,26 @@ class Mos6502 {
 
         void LDA(uint16_t address); // Load Accumulator
         void ADC(uint16_t address); // Add with Carry
+        void SBC(uint16_t address); // Subtract with Carry
         void AND(uint16_t address); // Bitwise AND with Accumulator
         void ASL_A();               // ASL Accumulator
         void ASL(uint16_t address); // ASL Memory (read-modify-write)
+        void LSR_A();               // LSR Accumulator
+        void LSR(uint16_t address); // LSR Memory (read-modify-write)
+        void ROL_A();               // ROL Accumulator
+        void ROL(uint16_t address); // ROL Memory (read-modify-write)
+        void ROR_A();               // ROR Accumulator
+        void ROR(uint16_t address); // ROR Memory (read-modify-write)
         void BIT(uint16_t address); // Test Bits
         void CMP(uint16_t address); // Compare Accumulator
         void CPX(uint16_t address); // Compare X register
         void CPY(uint16_t address); // Compare Y register
+        void DEC(uint16_t address); // Decrement Memory
+        void INC(uint16_t address); // Increment Memory
+        void EOR(uint16_t address); // Exclusive OR with Accumulator
+        void ORA(uint16_t address); // Bitwise OR with Accumulator
+        void STX(uint16_t address); // Store X register
+        void STY(uint16_t address); // Store Y register
         void reset(); // Reset CPU
 
         // Helper to update Zero and Negative flags from a value
@@ -50,6 +63,7 @@ class Mos6502 {
         uint16_t zp(); // modo zero page
         uint16_t abs(); // modo absoluto
         uint16_t zpx(); // zero-page wrap
+        uint16_t zpy(); // zero-page wrap using Y
         uint16_t absx();
         uint16_t absy();
         uint16_t indx();
