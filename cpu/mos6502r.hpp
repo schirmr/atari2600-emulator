@@ -21,6 +21,7 @@ class Mos6502 {
         uint8_t SP = 0xFD; // Stack pointer
         uint16_t PC = 0x0000; // program counter
         uint8_t status = 0x20; // flags NV-BDIZC (negative, overflow, -, break, decimal, interrupt disable, zero, carry)
+        uint64_t cycles = 0;
 
         Memory* memory;
     public:
@@ -62,6 +63,7 @@ class Mos6502 {
         uint16_t imm(); // modo imediato
         uint16_t zp(); // modo zero page
         uint16_t abs(); // modo absoluto
+        uint16_t absx_no_cross(); // modo absoluto,X sem checagem de cruzamento de página
         uint16_t zpx(); // zero-page wrap
         uint16_t zpy(); // zero-page wrap using Y
         uint16_t absx();

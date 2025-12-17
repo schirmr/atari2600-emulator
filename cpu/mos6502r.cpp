@@ -283,6 +283,13 @@ uint16_t Mos6502::abs(){ // modo absoluto
     return ((hi << 8) | lo);
 }
 
+uint16_t Mos6502::absx_no_cross() { // modo absoluto,X sem checagem de cruzamento de página
+    uint8_t lo = memory->read(PC++);
+    uint8_t hi = memory->read(PC++);
+    return ((hi << 8) | lo) + X;
+}
+
+
 uint16_t Mos6502::zpx() { // zero-page wrap
     uint8_t addr = memory->read(PC++);
     return (addr + X) & 0xFF; 
@@ -296,13 +303,27 @@ uint16_t Mos6502::zpy() { // zero-page wrap using Y
 uint16_t Mos6502::absx() {
     uint8_t lo = memory->read(PC++);
     uint8_t hi = memory->read(PC++);
-    return ((hi << 8) | lo) + X;
+    uint16_t base = (hi << 8) | lo;
+
+    uint16_t addr = base + X;
+
+    if((addr & 0xFF00) != (base & 0xFF00)){
+        cycles++;
+    }
+    return addr;
 }
 
 uint16_t Mos6502::absy() {
     uint8_t lo = memory->read(PC++);
     uint8_t hi = memory->read(PC++);
-    return ((hi << 8) | lo) + Y;
+    uint16_t base = (hi << 8) | lo;
+
+    uint16_t addr = base + Y;
+
+    if((addr & 0xFF00) != (base & 0xFF00)){
+        cycles++;
+    }
+    return addr;
 }
 
 uint16_t Mos6502::indx() {
@@ -316,7 +337,14 @@ uint16_t Mos6502::indy() {
     uint8_t zp_addr = memory->read(PC++);
     uint8_t lo = memory->read(zp_addr);
     uint8_t hi = memory->read((zp_addr + 1) & 0xFF);
-    return ((hi << 8) | lo) + Y;
+    
+    uint16_t base = (hi << 8) | lo;
+    uint16_t addr = base + Y;
+
+    if((addr & 0xFF00) != (base & 0xFF00)){
+        cycles++;
+    }
+    return addr;
 }
 
 
@@ -335,12 +363,58 @@ void Mos6502::cpuClock(){
         case 0xA9: { // LDA imediato
             uint16_t addr = imm();
             LDA(addr);
+            cycles+=2;
+            break;
+        }
+
+        case 0xA5: { // LDA zero page
+            uint16_t addr = zp();
+            LDA(addr);
+            cycles+=3;
+            break;
+        }
+    
+        case 0xAD: { // LDA absoluto
+            uint16_t addr = abs();
+            LDA(addr);
+            cycles+=4;
+            break;
+        }
+        case 0xB5: { // LDA zero page,X
+            uint16_t addr = zpx();
+            LDA(addr);
+            cycles+=4;
+            break;
+        }
+        case 0xBD: { // LDA absolute,X
+            uint16_t addr = absx();
+            LDA(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absx)
+            break;
+        }
+        case 0xB9: { // LDA absolute,Y
+            uint16_t addr = absy();
+            LDA(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absy)
+            break;
+        }
+        case 0xA1: { // LDA (Indirect,X)
+            uint16_t addr = indx();
+            LDA(addr);
+            cycles+=6;
+            break;
+        }
+        case 0xB1: { // LDA (Indirect,Y)
+            uint16_t addr = indy();
+            LDA(addr);
+            cycles+=5; // +1 se cruzar página (já tratado em indy)
             break;
         }
 
         // ASL - Arithmetic Shift Left 
         case 0x0A: { // ASL A (Accumulator)
             ASL_A();
+            cycles+=2;
             break;
         }
 
@@ -348,139 +422,166 @@ void Mos6502::cpuClock(){
         case 0x09: { // ORA immediate
             uint16_t addr = imm();
             ORA(addr);
+            cycles+=2;
             break;
         }
         case 0x05: { // ORA zero page
             uint16_t addr = zp();
             ORA(addr);
+            cycles+=2;
             break;
         }
         case 0x15: { // ORA zero page,X
             uint16_t addr = zpx();
             ORA(addr);
+            cycles+=3;
             break;
         }
         case 0x0D: { // ORA absolute
             uint16_t addr = abs();
             ORA(addr);
+            cycles+=4;
             break;
         }
         case 0x1D: { // ORA absolute,X
             uint16_t addr = absx();
             ORA(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absx)
             break;
         }
         case 0x19: { // ORA absolute,Y
             uint16_t addr = absy();
             ORA(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absy)
             break;
         }
         case 0x01: { // ORA (Indirect,X)
             uint16_t addr = indx();
             ORA(addr);
+            cycles+=6;
             break;
         }
         case 0x11: { // ORA (Indirect,Y)
             uint16_t addr = indy();
             ORA(addr);
+            cycles+=5; // +1 se cruzar página (já tratado em indy)
             break;
         }
         case 0x06: { // ASL Zero Page
             uint16_t addr = zp();
             ASL(addr);
+            cycles+=5;
             break;
         }
         case 0x16: { // ASL Zero Page,X
             uint16_t addr = zpx();
             ASL(addr);
+            cycles+=6;
             break;
         }
         case 0x0E: { // ASL Absolute
             uint16_t addr = abs();
             ASL(addr);
+            cycles+=6;
             break;
         }
         case 0x1E: { // ASL Absolute,X
             uint16_t addr = absx();
             ASL(addr);
+            cycles+=7;
             break;
         }
 
         // LSR - Logical Shift Right
         case 0x4A: { // LSR A (Accumulator)
             LSR_A();
+            cycles+=2;
             break;
         }
         case 0x46: { // LSR Zero Page
             uint16_t addr = zp();
             LSR(addr);
+            cycles+=5;
             break;
         }
         case 0x56: { // LSR Zero Page,X
             uint16_t addr = zpx();
             LSR(addr);
+            cycles+=6;
             break;
         }
         case 0x4E: { // LSR Absolute
             uint16_t addr = abs();
             LSR(addr);
+            cycles+=6;
             break;
         }
         case 0x5E: { // LSR Absolute,X
             uint16_t addr = absx();
             LSR(addr);
+            cycles+=7;
             break;
         }
 
         // ROL - Rotate Left
         case 0x2A: { // ROL A (Accumulator)
             ROL_A();
+            cycles+=2;
             break;
         }
         case 0x26: { // ROL Zero Page
             uint16_t addr = zp();
             ROL(addr);
+            cycles+=5;
             break;
         }
         case 0x36: { // ROL Zero Page,X
             uint16_t addr = zpx();
             ROL(addr);
+            cycles+=6;
             break;
         }
         case 0x2E: { // ROL Absolute
             uint16_t addr = abs();
             ROL(addr);
+            cycles+=6;
             break;
         }
         case 0x3E: { // ROL Absolute,X
             uint16_t addr = absx();
             ROL(addr);
+            cycles+=7;
             break;
         }
 
         // ROR - Rotate Right
         case 0x6A: { // ROR A (Accumulator)
             ROR_A();
+            cycles+=2;
             break;
         }
         case 0x66: { // ROR Zero Page
             uint16_t addr = zp();
             ROR(addr);
+            cycles+=5;
             break;
         }
         case 0x76: { // ROR Zero Page,X
             uint16_t addr = zpx();
             ROR(addr);
+            cycles+=6;
             break;
         }
         case 0x6E: { // ROR Absolute
             uint16_t addr = abs();
             ROR(addr);
+            cycles+=6;
             break;
         }
         case 0x7E: { // ROR Absolute,X
             uint16_t addr = absx();
             ROR(addr);
+            cycles+=7;
             break;
         }
 
@@ -488,11 +589,13 @@ void Mos6502::cpuClock(){
         case 0x24: { // BIT Zero Page
             uint16_t addr = zp();
             BIT(addr);
+            cycles+=3;
             break;
         }
         case 0x2C: { // BIT Absolute
             uint16_t addr = abs();
             BIT(addr);
+            cycles+=4;
             break;
         }
 
@@ -500,99 +603,49 @@ void Mos6502::cpuClock(){
         case 0x49: { // EOR immediate
             uint16_t addr = imm();
             EOR(addr);
+            cycles+=2;
             break;
         }
         case 0x45: { // EOR zero page
             uint16_t addr = zp();
             EOR(addr);
+            cycles+=3;
             break;
         }
         case 0x55: { // EOR zero page,X
             uint16_t addr = zpx();
             EOR(addr);
+            cycles+=4;
             break;
         }
         case 0x4D: { // EOR absolute
             uint16_t addr = abs();
             EOR(addr);
+            cycles+=4;
             break;
         }
         case 0x5D: { // EOR absolute,X
             uint16_t addr = absx();
             EOR(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absx)
             break;
         }
         case 0x59: { // EOR absolute,Y
             uint16_t addr = absy();
             EOR(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absy)
             break;
         }
         case 0x41: { // EOR (Indirect,X)
             uint16_t addr = indx();
             EOR(addr);
+            cycles+=6;
             break;
         }
         case 0x51: { // EOR (Indirect,Y)
             uint16_t addr = indy();
             EOR(addr);
-            break;
-        }
-
-        // Branch Instructions - relative addressing
-        case 0x10: { // BPL (Branch on Plus) N == 0
-            uint8_t disp = memory->read(PC++);
-            if(!getFlag(NEGATIVE)){
-                PC = addSigned8(PC, disp);
-            }
-            break;
-        }
-        case 0x30: { // BMI (Branch on Minus) N == 1
-            uint8_t disp = memory->read(PC++);
-            if(getFlag(NEGATIVE)){
-                PC = addSigned8(PC, disp);
-            }
-            break;
-        }
-        case 0x50: { // BVC (Branch on Overflow Clear) V == 0
-            uint8_t disp = memory->read(PC++);
-            if(!getFlag(OVERFLOW)){
-                PC = addSigned8(PC, disp);
-            }
-            break;
-        }
-        case 0x70: { // BVS (Branch on Overflow Set) V == 1
-            uint8_t disp = memory->read(PC++);
-            if(getFlag(OVERFLOW)){
-                PC = addSigned8(PC, disp);
-            }
-            break;
-        }
-        case 0x90: { // BCC (Branch on Carry Clear) C == 0
-            uint8_t disp = memory->read(PC++);
-            if(!getFlag(CARRY)){
-                PC = addSigned8(PC, disp);
-            }
-            break;
-        }
-        case 0xB0: { // BCS (Branch on Carry Set) C == 1
-            uint8_t disp = memory->read(PC++);
-            if(getFlag(CARRY)){
-                PC = addSigned8(PC, disp);
-            }
-            break;
-        }
-        case 0xD0: { // BNE (Branch on Not Equal) Z == 0
-            uint8_t disp = memory->read(PC++);
-            if(!getFlag(ZERO)){
-                PC = addSigned8(PC, disp);
-            }
-            break;
-        }
-        case 0xF0: { // BEQ (Branch on Equal) Z == 1
-            uint8_t disp = memory->read(PC++);
-            if(getFlag(ZERO)){
-                PC = addSigned8(PC, disp);
-            }
+            cycles+=5; // +1 se cruzar página (já tratado em indy)
             break;
         }
 
@@ -600,41 +653,49 @@ void Mos6502::cpuClock(){
         case 0x29: { // AND immediate
             uint16_t addr = imm();
             AND(addr);
+            cycles+=2;
             break;
         }
         case 0x25: { // AND zero page
             uint16_t addr = zp();
             AND(addr);
+            cycles+=2;
             break;
         }
         case 0x35: { // AND zero page,X
             uint16_t addr = zpx();
             AND(addr);
+            cycles+=3;
             break;
         }
         case 0x2D: { // AND absolute
             uint16_t addr = abs();
             AND(addr);
+            cycles+=4;
             break;
         }
         case 0x3D: { // AND absolute,X
             uint16_t addr = absx();
             AND(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absx)
             break;
         }
         case 0x39: { // AND absolute,Y
             uint16_t addr = absy();
             AND(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absy)
             break;
         }
         case 0x21: { // AND (Indirect,X)
             uint16_t addr = indx();
             AND(addr);
+            cycles+=6;
             break;
         }
         case 0x31: { // AND (Indirect,Y)
             uint16_t addr = indy();
             AND(addr);
+            cycles+=5; // +1 se cruzar página (já tratado em indy)
             break;
         }
 
@@ -642,21 +703,25 @@ void Mos6502::cpuClock(){
         case 0xC6: { // DEC Zero Page
             uint16_t addr = zp();
             DEC(addr);
+            cycles+=5;
             break;
         }
         case 0xD6: { // DEC Zero Page,X
             uint16_t addr = zpx();
             DEC(addr);
+            cycles+=6;
             break;
         }
         case 0xCE: { // DEC Absolute
             uint16_t addr = abs();
             DEC(addr);
+            cycles+=6;
             break;
         }
         case 0xDE: { // DEC Absolute,X
             uint16_t addr = absx();
             DEC(addr);
+            cycles+=7;
             break;
         }
 
@@ -664,21 +729,25 @@ void Mos6502::cpuClock(){
         case 0xE6: { // INC Zero Page
             uint16_t addr = zp();
             INC(addr);
+            cycles+=5;
             break;
         }
         case 0xF6: { // INC Zero Page,X
             uint16_t addr = zpx();
             INC(addr);
+            cycles+=6;
             break;
         }
         case 0xEE: { // INC Absolute
             uint16_t addr = abs();
             INC(addr);
+            cycles+=6;
             break;
         }
         case 0xFE: { // INC Absolute,X
             uint16_t addr = absx();
             INC(addr);
+            cycles+=7;
             break;
         }
 
@@ -686,41 +755,49 @@ void Mos6502::cpuClock(){
         case 0xC9: { // CMP immediate
             uint16_t addr = imm();
             CMP(addr);
+            cycles+=2;
             break;
         }
         case 0xC5: { // CMP zero page
             uint16_t addr = zp();
             CMP(addr);
+            cycles+=3;
             break;
         }
         case 0xD5: { // CMP zero page,X
             uint16_t addr = zpx();
             CMP(addr);
+            cycles+=4;
             break;
         }
         case 0xCD: { // CMP absolute
             uint16_t addr = abs();
             CMP(addr);
+            cycles+=4;
             break;
         }
         case 0xDD: { // CMP absolute,X
             uint16_t addr = absx();
             CMP(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absx)
             break;
         }
         case 0xD9: { // CMP absolute,Y
             uint16_t addr = absy();
             CMP(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absy)
             break;
         }
         case 0xC1: { // CMP (Indirect,X)
             uint16_t addr = indx();
             CMP(addr);
+            cycles+=6;
             break;
         }
         case 0xD1: { // CMP (Indirect,Y)
             uint16_t addr = indy();
             CMP(addr);
+            cycles+=5; // +1 se cruzar página (já tratado em indy)
             break;
         }
 
@@ -728,32 +805,39 @@ void Mos6502::cpuClock(){
         case 0xE0: { // CPX immediate
             uint16_t addr = imm();
             CPX(addr);
+            cycles+=2;
             break;
         }
         case 0xE4: { // CPX zero page
             uint16_t addr = zp();
             CPX(addr);
+            cycles+=3;
             break;
         }
         case 0xEC: { // CPX absolute
             uint16_t addr = abs();
             CPX(addr);
+            cycles+=4;
             break;
         }
+
         /* CPY - Compare Y register */
         case 0xC0: { // CPY immediate
             uint16_t addr = imm();
             CPY(addr);
+            cycles+=2;
             break;
         }
         case 0xC4: { // CPY zero page
             uint16_t addr = zp();
             CPY(addr);
+            cycles+=3;
             break;
         }
         case 0xCC: { // CPY absolute
             uint16_t addr = abs();
             CPY(addr);
+            cycles+=4;
             break;
         }
 
@@ -761,48 +845,56 @@ void Mos6502::cpuClock(){
         case 0x69: { // ADC imediato
             uint16_t addr = imm();
             ADC(addr);
+            cycles+=2;
             break;
         }
 
         case 0x65: { // ADC zero page
             uint16_t addr = zp();
             ADC(addr);
+            cycles+=3;
             break;
         }
 
         case 0x75: { // ADC zero page,X
             uint16_t addr = zpx();
             ADC(addr);
+            cycles+=4;
             break;
         }
 
         case 0x6D: { // ADC absoluto
             uint16_t addr = abs();
             ADC(addr);
+            cycles+=4;
             break;
         }
 
         case 0x7D: { // ADC absoluto,X
             uint16_t addr = absx();
             ADC(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absx)
             break;
         }
 
         case 0x79: { // ADC absoluto,Y
             uint16_t addr = absy();
             ADC(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absy)
             break;
         }
 
         case 0x61: { // ADC indireto,X
             uint16_t addr = indx();
             ADC(addr);
+            cycles+=6;
             break;
         }
 
         case 0x71: { // ADC indireto,Y
             uint16_t addr = indy();
             ADC(addr);
+            cycles+=5; // +1 se cruzar página (já tratado em indy)
             break;
         }
 
@@ -810,41 +902,49 @@ void Mos6502::cpuClock(){
         case 0xE9: { // SBC immediate
             uint16_t addr = imm();
             SBC(addr);
+            cycles+=2;
             break;
         }
         case 0xE5: { // SBC zero page
             uint16_t addr = zp();
             SBC(addr);
+            cycles+=3;
             break;
         }
         case 0xF5: { // SBC zero page,X
             uint16_t addr = zpx();
             SBC(addr);
+            cycles+=4;
             break;
         }
         case 0xED: { // SBC absolute
             uint16_t addr = abs();
             SBC(addr);
+            cycles+=4;
             break;
         }
         case 0xFD: { // SBC absolute,X
             uint16_t addr = absx();
             SBC(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absx)
             break;
         }
         case 0xF9: { // SBC absolute,Y
             uint16_t addr = absy();
             SBC(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absy)
             break;
         }
         case 0xE1: { // SBC (Indirect,X)
             uint16_t addr = indx();
             SBC(addr);
+            cycles+=6;
             break;
         }
         case 0xF1: { // SBC (Indirect,Y)
             uint16_t addr = indy();
             SBC(addr);
+            cycles+=5; // +1 se cruzar página (já tratado em indy)
             break;
         }
 
@@ -852,12 +952,21 @@ void Mos6502::cpuClock(){
         case 0x85: { // STA zero page
             uint16_t addr = zp();
             STA(addr);
+            cycles+=3;
+            break;
+        }
+
+        case 0x9D: { // STA absolute,X
+            uint16_t addr = absx_no_cross();
+            STA(addr);
+            cycles+=4;
             break;
         }
 
         case 0x8D: { // STA absolute
             uint16_t addr = abs();
             STA(addr);
+            cycles+=4;
             break;
         }
 
@@ -865,16 +974,19 @@ void Mos6502::cpuClock(){
         case 0x86: { // STX zero page
             uint16_t addr = zp();
             STX(addr);
+            cycles+=3;
             break;
         }
         case 0x96: { // STX zero page,Y
             uint16_t addr = zpy();
             STX(addr);
+            cycles+=4;
             break;
         }
         case 0x8E: { // STX absolute
             uint16_t addr = abs();
             STX(addr);
+            cycles+=4;
             break;
         }
 
@@ -882,16 +994,19 @@ void Mos6502::cpuClock(){
         case 0x84: { // STY zero page
             uint16_t addr = zp();
             STY(addr);
+            cycles+=3;
             break;
         }
         case 0x94: { // STY zero page,X
             uint16_t addr = zpx();
             STY(addr);
+            cycles+=4;
             break;
         }
         case 0x8C: { // STY absolute
             uint16_t addr = abs();
             STY(addr);
+            cycles+=4;
             break;
         }
 
@@ -899,30 +1014,35 @@ void Mos6502::cpuClock(){
         case 0xA2: { // LDX immediate
             uint16_t addr = imm();
             LDX(addr);
+            cycles+=2;
             break;
         }
 
         case 0xA6: { // LDX zero page
             uint16_t addr = zp();
             LDX(addr);
+            cycles+=3;
             break;
         }
 
         case 0xAE: { // LDX absolute
             uint16_t addr = abs();
             LDX(addr);
+            cycles+=4;
             break;
         }
 
         case 0xB6: { // LDX zero page,Y
             uint16_t addr = zpy();
             LDX(addr);
+            cycles+=4;
             break;
         }
 
         case 0xBE: { // LDX absolute,Y
             uint16_t addr = absy();
             LDX(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absy)
             break;
         }
 
@@ -930,68 +1050,151 @@ void Mos6502::cpuClock(){
         case 0xA0: { // LDY immediate
             uint16_t addr = imm();
             LDY(addr);
+            cycles+=2;
             break;
         }
 
         case 0xA4: { // LDY zero page
             uint16_t addr = zp();
             LDY(addr);
+            cycles+=3;
             break;
         }
 
         case 0xAC: { // LDY absolute
             uint16_t addr = abs();
             LDY(addr);
+            cycles+=4;
             break;
         }
         case 0xB4: { // LDY zero page,X
             uint16_t addr = zpx();
             LDY(addr);
+            cycles+=4;
             break;
         }
         case 0xBC: { // LDY absolute,X
             uint16_t addr = absx();
             LDY(addr);
+            cycles+=4; // +1 se cruzar página (já tratado em absx)
             break;
         }
 
-        case 0xA5: { // LDA zero page
-            uint16_t addr = zp();
-            LDA(addr);
-            break;
-        }
-    
-        case 0xAD: { // LDA absoluto
-            uint16_t addr = abs();
-            LDA(addr);
-            break;
-        }
-        case 0xB5: { // LDA zero page,X
-            uint16_t addr = zpx();
-            LDA(addr);
-            break;
-        }
-        case 0xBD: { // LDA absolute,X
-            uint16_t addr = absx();
-            LDA(addr);
-            break;
-        }
-        case 0xB9: { // LDA absolute,Y
-            uint16_t addr = absy();
-            LDA(addr);
-            break;
-        }
-        case 0xA1: { // LDA (Indirect,X)
-            uint16_t addr = indx();
-            LDA(addr);
-            break;
-        }
-        case 0xB1: { // LDA (Indirect,Y)
-            uint16_t addr = indy();
-            LDA(addr);
-            break;
-        }
         
+        
+
+
+
+        // Branch Instructions - relative addressing
+        case 0x10: { // BPL (Branch on Plus) N == 0
+            uint8_t disp = memory->read(PC++);
+            cycles+=2;
+            if(!getFlag(NEGATIVE)){
+                uint16_t oldPC = PC;
+                PC = addSigned8(PC, disp);
+                cycles++;
+                if((oldPC & 0xFF00) != (PC & 0xFF00)){
+                    cycles++;
+                }
+            }
+            break;
+        }
+        case 0x30: { // BMI (Branch on Minus) N == 1
+            uint8_t disp = memory->read(PC++);
+            cycles+=2;
+            if(getFlag(NEGATIVE)){
+                uint16_t oldPC = PC;
+                PC = addSigned8(PC, disp);
+                cycles++;
+                if((oldPC & 0xFF00) != (PC & 0xFF00)){
+                    cycles++;
+                }
+            }
+            break;
+        }
+        case 0x50: { // BVC (Branch on Overflow Clear) V == 0
+            uint8_t disp = memory->read(PC++);
+            cycles+=2;
+            if(!getFlag(OVERFLOW)){
+                uint16_t oldPC = PC;
+                PC = addSigned8(PC, disp);
+                cycles++;
+                if((oldPC & 0xFF00) != (PC & 0xFF00)){
+                    cycles++;
+                }
+            }
+            break;
+        }
+        case 0x70: { // BVS (Branch on Overflow Set) V == 1
+            uint8_t disp = memory->read(PC++);
+            cycles+=2;
+            if(getFlag(OVERFLOW)){
+                uint16_t oldPC = PC;
+                PC = addSigned8(PC, disp);
+                cycles++;
+                if((oldPC & 0xFF00) != (PC & 0xFF00)){
+                    cycles++;
+                }
+            }
+            break;
+        }
+        case 0x90: { // BCC (Branch on Carry Clear) C == 0
+            uint8_t disp = memory->read(PC++);
+            cycles+=2;
+            if(!getFlag(CARRY)){
+                uint16_t oldPC = PC;
+                PC = addSigned8(PC, disp);
+                cycles++;
+                if((oldPC & 0xFF00) != (PC & 0xFF00)){
+                    cycles++;
+                }
+            }
+            break;
+        }
+        case 0xB0: { // BCS (Branch on Carry Set) C == 1
+            uint8_t disp = memory->read(PC++);
+            cycles+=2;
+            if(getFlag(CARRY)){
+                uint16_t oldPC = PC;
+                PC = addSigned8(PC, disp);
+                cycles++;
+                if((oldPC & 0xFF00) != (PC & 0xFF00)){
+                    cycles++;
+                }
+            }
+            break;
+        }
+        case 0xD0: { // BNE (Branch on Not Equal) Z == 0
+            uint8_t disp = memory->read(PC++);
+            cycles+=2;
+            if(!getFlag(ZERO)){
+                uint16_t oldPC = PC;
+                PC = addSigned8(PC, disp);
+                cycles++;
+                if((oldPC & 0xFF00) != (PC & 0xFF00)){
+                    cycles++;
+                }
+            }
+            break;
+        }
+        case 0xF0: { // BEQ (Branch on Equal) Z == 1
+            uint8_t disp = memory->read(PC++);
+            cycles+=2;
+            if(getFlag(ZERO)){
+                uint16_t oldPC = PC;
+                PC = addSigned8(PC, disp);
+                cycles++;
+                if((oldPC & 0xFF00) != (PC & 0xFF00)){
+                    cycles++;
+                }
+            }
+            break;
+        }
+
+
+
+
+
         case 0x00: { // BRK - Force Interrupt
             // On BRK, the CPU pushes PC+1 and the status with B flag set,
             // sets Interrupt Disable, then loads the IRQ/BRK vector at $FFFE/$FFFF.
@@ -1015,6 +1218,7 @@ void Mos6502::cpuClock(){
             uint8_t lo = memory->read(0xFFFE);
             uint8_t hi = memory->read(0xFFFF);
             PC = (uint16_t)((hi << 8) | lo);
+            cycles+=7;
             break;
         }
 
@@ -1028,6 +1232,7 @@ void Mos6502::cpuClock(){
             uint8_t lo = memory->read(0x0100 + ++SP);
             uint8_t hi = memory->read(0x0100 + ++SP);
             PC = (hi << 8) | lo;
+            cycles+=6;
             break;
         }
 
@@ -1043,6 +1248,7 @@ void Mos6502::cpuClock(){
 
         case 0x4C: { // JMP Absolute
             PC = abs();
+            cycles+=3;
             break;
         }
 
@@ -1051,6 +1257,7 @@ void Mos6502::cpuClock(){
             uint8_t lo = memory->read(ptr);
             uint8_t hi = memory->read((ptr & 0xFF00) | ((ptr + 1) & 0x00FF));
             PC = (uint16_t)((hi << 8) | lo);
+            cycles+=5;
             break;
         }
 
@@ -1062,62 +1269,70 @@ void Mos6502::cpuClock(){
             memory->write(0x0100 + SP--, ret & 0xFF);
 
             PC = addr;
+            cycles+=6;
             break;
         }
 
         case 0xEA: { // NOP
+            cycles+=2;
             break;
         }
 
         // Flags básicos
-        case 0x18: setFlag(CARRY, false); break; // CLC
-        case 0x38: setFlag(CARRY, true);  break; // SEC
-        case 0x58: setFlag(INTERRUPT_DISABLE, false); break; // CLI
-        case 0x78: setFlag(INTERRUPT_DISABLE, true);  break; // SEI
-        case 0xB8: setFlag(OVERFLOW, false); break; // CLV
+        case 0x18: setFlag(CARRY, false); cycles+=2; break; // CLC
+        case 0x38: setFlag(CARRY, true);  cycles+=2; break; // SEC
+        case 0x58: setFlag(INTERRUPT_DISABLE, false); cycles+=2; break; // CLI
+        case 0x78: setFlag(INTERRUPT_DISABLE, true);  cycles+=2; break; // SEI
+        case 0xB8: setFlag(OVERFLOW, false); cycles+=2; break; // CLV
         // Incrementos / Decrementos
-        case 0xE8: X++; updateZN(X); break; // INX
-        case 0xCA: X--; updateZN(X); break; // DEX
-        case 0xC8: Y++; updateZN(Y); break; // INY
-        case 0x88: Y--; updateZN(Y); break; // DEY
+        case 0xE8: X++; updateZN(X); cycles+=2; break; // INX
+        case 0xCA: X--; updateZN(X); cycles+=2; break; // DEX
+        case 0xC8: Y++; updateZN(Y); cycles+=2; break; // INY
+        case 0x88: Y--; updateZN(Y); cycles+=2; break; // DEY
         // Transferências
-        case 0xAA: X = A; updateZN(X); break; // TAX
-        case 0x8A: A = X; updateZN(A); break; // TXA
-        case 0xA8: Y = A; updateZN(Y); break; // TAY
-        case 0x98: A = Y; updateZN(A); break; // TYA
+        case 0xAA: X = A; updateZN(X); cycles+=2; break; // TAX
+        case 0x8A: A = X; updateZN(A); cycles+=2; break; // TXA
+        case 0xA8: Y = A; updateZN(Y); cycles+=2; break; // TAY
+        case 0x98: A = Y; updateZN(A); cycles+=2; break; // TYA
 
         case 0x60: { //  RTS (ReTurn from Subroutine)
             uint8_t lo = memory->read(0x0100 + ++SP);
             uint8_t hi = memory->read(0x0100 + ++SP);
             PC = ((hi << 8) | lo) + 1;
+            cycles+=6;
             break;
         }
 
         case 0x48: { // PHA (push accumulator)
             memory->write(0x0100 + SP--, A);
+            cycles+=3;
             break;
         }
 
         case 0x68: { // PLA (pulll accumulator)
             A = memory->read(0x0100 + ++SP);
             updateZN(A);
+            cycles+=4;
             break;
         }
 
         case 0x9A: { // TXS (Transfer X to Stack Pointer)
             SP = X;
+            cycles+=2;
             break;
         }
 
         case 0xBA: { // TSX (Transfer Stack Pointer to X)
             X = SP;
             updateZN(X);
+            cycles+=2;
             break;
         }
 
         case 0x08: { // PHP (Push Processor Status)
             uint8_t pushed = status | BREAK | UNUSED;
             memory->write(0x0100 + SP--, pushed);
+            cycles+=3;
             break;
         }
 
@@ -1125,6 +1340,7 @@ void Mos6502::cpuClock(){
             status = memory->read(0x0100 + ++SP);
             status &= ~BREAK;
             status |= UNUSED;
+            cycles+=4;
             break;
         }
 

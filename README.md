@@ -86,7 +86,7 @@ Este é um projeto de aprendizado meu, mas que pode evoluir para algo maior.
 - [x] Flags e controle: CLC/SEC, CLI/SEI, CLD/SED, CLV
 - [x] Stack: PHA/PLA, PHP/PLP, TSX/TXS
 - [x] `SBC` implementado
-- [ ] Controle básico de ciclos e page crossing (+1)
+- [x] Controle básico de ciclos e page crossing (+1)
 - [ ] IRQ e NMI (estrutura base)
 - [ ] Passa ROMs de teste e homebrew simples
 
