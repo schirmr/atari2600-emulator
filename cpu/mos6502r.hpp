@@ -30,6 +30,13 @@ class Mos6502 {
 
         void LDA(uint16_t address); // Load Accumulator
         void ADC(uint16_t address); // Add with Carry
+        void AND(uint16_t address); // Bitwise AND with Accumulator
+        void ASL_A();               // ASL Accumulator
+        void ASL(uint16_t address); // ASL Memory (read-modify-write)
+        void BIT(uint16_t address); // Test Bits
+        void CMP(uint16_t address); // Compare Accumulator
+        void CPX(uint16_t address); // Compare X register
+        void CPY(uint16_t address); // Compare Y register
 
         // Helper to update Zero and Negative flags from a value
         void updateZN(uint8_t value);

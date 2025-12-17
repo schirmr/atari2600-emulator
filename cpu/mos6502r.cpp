@@ -1,4 +1,4 @@
-#include "mos6502r.hpp"
+#include "mos6502r.hpp" // Processador MOS 6502 Reduzido ou 6507
 #include <iostream>
 
 Mos6502::Mos6502(Memory* mem){
@@ -21,18 +21,42 @@ void Mos6502::updateZN(uint8_t value){
 
 void Mos6502::ADC(uint16_t address){
     uint8_t m = memory->read(address);
-    uint16_t sum = (uint16_t)A + (uint16_t)m + (getFlag(CARRY) ? 1 : 0);
+    uint16_t carry_in = getFlag(CARRY) ? 1 : 0;
 
-    // Carry flag (1 or 0)
-    setFlag(CARRY, sum > 0xFF);
+    // Binário básico para calcular V conforme 6502 (mesmo em decimal)
+    uint16_t bin_sum = (uint16_t)A + (uint16_t)m + carry_in;
+    uint8_t bin_result = (uint8_t)(bin_sum & 0xFF);
+    bool overflow = (~(A ^ m) & (A ^ bin_result) & 0x80) != 0; // V é baseado no somatório binário
 
-    uint8_t result = (uint8_t)(sum & 0xFF); // Guarda apenas os 8 bits baixos
+    if(getFlag(DECIMAL_MODE)){
+        // Ajuste BCD (modo decimal): soma 4 bits baixo e alto separadamente
+        uint8_t al = (A & 0x0F) + (m & 0x0F) + (uint8_t)carry_in;
+        uint8_t ah = (A >> 4) + (m >> 4);
 
-    bool overflow = (~(A ^ m) & (A ^ result) & 0x80) != 0; // ~^(XNOR) p/ detectar overflow (0x80 = bit de sinal = 128)
-    setFlag(OVERFLOW, overflow);
+        if(al > 9){
+            al += 6; // correção decimal
+            ah += 1;
+        }
+        if(ah > 9){
+            ah += 6; // correção decimal
+        }
 
-    A = result;
-    updateZN(A);
+        uint16_t dec = ((uint16_t)ah << 4) | (al & 0x0F);
+        // Carry em BCD: se ah passou de 15 após correção
+        bool dec_carry = ah > 15;
+
+        setFlag(CARRY, dec_carry);
+        setFlag(OVERFLOW, overflow); // 6502 define V pelo somatório binário mesmo em decimal
+
+        A = (uint8_t)(dec & 0xFF);
+        updateZN(A);
+    } else {
+        // Modo binário normal
+        setFlag(CARRY, bin_sum > 0xFF);
+        setFlag(OVERFLOW, overflow);
+        A = bin_result;
+        updateZN(A);
+    }
 }
 
 void Mos6502::STA(uint16_t address){
@@ -47,6 +71,60 @@ void Mos6502::LDX(uint16_t address){
 void Mos6502::LDY(uint16_t address){
     Y = memory->read(address);
     updateZN(Y);
+}
+
+void Mos6502::AND(uint16_t address){
+    uint8_t m = memory->read(address);
+    A = A & m;
+    updateZN(A); // affects Z and N
+}
+
+void Mos6502::CMP(uint16_t address){
+    uint8_t m = memory->read(address);
+    uint16_t res = (uint16_t)A - (uint16_t)m;
+    setFlag(CARRY, A >= m); // set if A >= M
+    setFlag(ZERO, (uint8_t)res == 0);
+    setFlag(NEGATIVE, (res & 0x80) != 0);
+}
+
+void Mos6502::CPX(uint16_t address){
+    uint8_t m = memory->read(address);
+    uint16_t res = (uint16_t)X - (uint16_t)m;
+    setFlag(CARRY, X >= m); // set if X >= M
+    setFlag(ZERO, (uint8_t)res == 0);
+    setFlag(NEGATIVE, (res & 0x80) != 0);
+}
+
+void Mos6502::CPY(uint16_t address){
+    uint8_t m = memory->read(address);
+    uint16_t res = (uint16_t)Y - (uint16_t)m;
+    setFlag(CARRY, Y >= m); // set if Y >= M
+    setFlag(ZERO, (uint8_t)res == 0);
+    setFlag(NEGATIVE, (res & 0x80) != 0);
+}
+
+void Mos6502::ASL_A(){
+    // Carry gets original bit 7
+    setFlag(CARRY, (A & 0x80) != 0);
+    A = (uint8_t)((A << 1) & 0xFF);
+    updateZN(A);
+}
+
+void Mos6502::ASL(uint16_t address){
+    uint8_t v = memory->read(address);
+    setFlag(CARRY, (v & 0x80) != 0);
+    uint8_t res = (uint8_t)((v << 1) & 0xFF);
+    memory->write(address, res);
+    updateZN(res);
+}
+
+void Mos6502::BIT(uint16_t address){
+    uint8_t m = memory->read(address);
+    // Z flag: (A & M) == 0
+    setFlag(ZERO, (uint8_t)(A & m) == 0);
+    // N and V reflect bits 7 and 6 of memory
+    setFlag(NEGATIVE, (m & 0x80) != 0);
+    setFlag(OVERFLOW, (m & 0x40) != 0);
 }
 
 /* Modos de endereçamento */
@@ -98,6 +176,11 @@ uint16_t Mos6502::indy() {
 }
 
 
+static inline uint16_t addSigned8(uint16_t base, uint8_t disp){
+    int8_t s = (int8_t)disp;
+    return (uint16_t)(base + s);
+}
+
 
 
 
@@ -111,6 +194,220 @@ void Mos6502::cpuClock(){
             break;
         }
 
+        // ASL - Arithmetic Shift Left 
+        case 0x0A: { // ASL A (Accumulator)
+            ASL_A();
+            break;
+        }
+        case 0x06: { // ASL Zero Page
+            uint16_t addr = zp();
+            ASL(addr);
+            break;
+        }
+        case 0x16: { // ASL Zero Page,X
+            uint16_t addr = zpx();
+            ASL(addr);
+            break;
+        }
+        case 0x0E: { // ASL Absolute
+            uint16_t addr = abs();
+            ASL(addr);
+            break;
+        }
+        case 0x1E: { // ASL Absolute,X
+            uint16_t addr = absx();
+            ASL(addr);
+            break;
+        }
+
+        // BIT - Test Bits 
+        case 0x24: { // BIT Zero Page
+            uint16_t addr = zp();
+            BIT(addr);
+            break;
+        }
+        case 0x2C: { // BIT Absolute
+            uint16_t addr = abs();
+            BIT(addr);
+            break;
+        }
+
+        // Branch Instructions - relative addressing
+        case 0x10: { // BPL (Branch on Plus) N == 0
+            uint8_t disp = memory->read(PC++);
+            if(!getFlag(NEGATIVE)){
+                PC = addSigned8(PC, disp);
+            }
+            break;
+        }
+        case 0x30: { // BMI (Branch on Minus) N == 1
+            uint8_t disp = memory->read(PC++);
+            if(getFlag(NEGATIVE)){
+                PC = addSigned8(PC, disp);
+            }
+            break;
+        }
+        case 0x50: { // BVC (Branch on Overflow Clear) V == 0
+            uint8_t disp = memory->read(PC++);
+            if(!getFlag(OVERFLOW)){
+                PC = addSigned8(PC, disp);
+            }
+            break;
+        }
+        case 0x70: { // BVS (Branch on Overflow Set) V == 1
+            uint8_t disp = memory->read(PC++);
+            if(getFlag(OVERFLOW)){
+                PC = addSigned8(PC, disp);
+            }
+            break;
+        }
+        case 0x90: { // BCC (Branch on Carry Clear) C == 0
+            uint8_t disp = memory->read(PC++);
+            if(!getFlag(CARRY)){
+                PC = addSigned8(PC, disp);
+            }
+            break;
+        }
+        case 0xB0: { // BCS (Branch on Carry Set) C == 1
+            uint8_t disp = memory->read(PC++);
+            if(getFlag(CARRY)){
+                PC = addSigned8(PC, disp);
+            }
+            break;
+        }
+        case 0xD0: { // BNE (Branch on Not Equal) Z == 0
+            uint8_t disp = memory->read(PC++);
+            if(!getFlag(ZERO)){
+                PC = addSigned8(PC, disp);
+            }
+            break;
+        }
+        case 0xF0: { // BEQ (Branch on Equal) Z == 1
+            uint8_t disp = memory->read(PC++);
+            if(getFlag(ZERO)){
+                PC = addSigned8(PC, disp);
+            }
+            break;
+        }
+
+        // AND - Bitwise AND with Accumulator
+        case 0x29: { // AND immediate
+            uint16_t addr = imm();
+            AND(addr);
+            break;
+        }
+        case 0x25: { // AND zero page
+            uint16_t addr = zp();
+            AND(addr);
+            break;
+        }
+        case 0x35: { // AND zero page,X
+            uint16_t addr = zpx();
+            AND(addr);
+            break;
+        }
+        case 0x2D: { // AND absolute
+            uint16_t addr = abs();
+            AND(addr);
+            break;
+        }
+        case 0x3D: { // AND absolute,X
+            uint16_t addr = absx();
+            AND(addr);
+            break;
+        }
+        case 0x39: { // AND absolute,Y
+            uint16_t addr = absy();
+            AND(addr);
+            break;
+        }
+        case 0x21: { // AND (Indirect,X)
+            uint16_t addr = indx();
+            AND(addr);
+            break;
+        }
+        case 0x31: { // AND (Indirect,Y)
+            uint16_t addr = indy();
+            AND(addr);
+            break;
+        }
+
+        // CMP - Compare Accumulator
+        case 0xC9: { // CMP immediate
+            uint16_t addr = imm();
+            CMP(addr);
+            break;
+        }
+        case 0xC5: { // CMP zero page
+            uint16_t addr = zp();
+            CMP(addr);
+            break;
+        }
+        case 0xD5: { // CMP zero page,X
+            uint16_t addr = zpx();
+            CMP(addr);
+            break;
+        }
+        case 0xCD: { // CMP absolute
+            uint16_t addr = abs();
+            CMP(addr);
+            break;
+        }
+        case 0xDD: { // CMP absolute,X
+            uint16_t addr = absx();
+            CMP(addr);
+            break;
+        }
+        case 0xD9: { // CMP absolute,Y
+            uint16_t addr = absy();
+            CMP(addr);
+            break;
+        }
+        case 0xC1: { // CMP (Indirect,X)
+            uint16_t addr = indx();
+            CMP(addr);
+            break;
+        }
+        case 0xD1: { // CMP (Indirect,Y)
+            uint16_t addr = indy();
+            CMP(addr);
+            break;
+        }
+
+        /* CPX - Compare X register */
+        case 0xE0: { // CPX immediate
+            uint16_t addr = imm();
+            CPX(addr);
+            break;
+        }
+        case 0xE4: { // CPX zero page
+            uint16_t addr = zp();
+            CPX(addr);
+            break;
+        }
+        case 0xEC: { // CPX absolute
+            uint16_t addr = abs();
+            CPX(addr);
+            break;
+        }
+        /* CPY - Compare Y register */
+        case 0xC0: { // CPY immediate
+            uint16_t addr = imm();
+            CPY(addr);
+            break;
+        }
+        case 0xC4: { // CPY zero page
+            uint16_t addr = zp();
+            CPY(addr);
+            break;
+        }
+        case 0xCC: { // CPY absolute
+            uint16_t addr = abs();
+            CPY(addr);
+            break;
+        }
+
+        // ADC - Add with Carry
         case 0x69: { // ADC imediato
             uint16_t addr = imm();
             ADC(addr);
@@ -123,13 +420,43 @@ void Mos6502::cpuClock(){
             break;
         }
 
+        case 0x75: { // ADC zero page,X
+            uint16_t addr = zpx();
+            ADC(addr);
+            break;
+        }
+
         case 0x6D: { // ADC absoluto
             uint16_t addr = abs();
             ADC(addr);
             break;
         }
 
-        /* STA - Store Accumulator */
+        case 0x7D: { // ADC absoluto,X
+            uint16_t addr = absx();
+            ADC(addr);
+            break;
+        }
+
+        case 0x79: { // ADC absoluto,Y
+            uint16_t addr = absy();
+            ADC(addr);
+            break;
+        }
+
+        case 0x61: { // ADC indireto,X
+            uint16_t addr = indx();
+            ADC(addr);
+            break;
+        }
+
+        case 0x71: { // ADC indireto,Y
+            uint16_t addr = indy();
+            ADC(addr);
+            break;
+        }
+
+        // STA - Store Accumulator
         case 0x85: { // STA zero page
             uint16_t addr = zp();
             STA(addr);
@@ -161,7 +488,7 @@ void Mos6502::cpuClock(){
             break;
         }
 
-        /* LDY - Load Y */
+        // LDY - Load Y
         case 0xA0: { // LDY immediate
             uint16_t addr = imm();
             LDY(addr);
@@ -192,9 +519,40 @@ void Mos6502::cpuClock(){
             break;
         }
         
-        case 0x00: // BRK
-            std::cout << "CPU: BRK encontrado, parando execução." << std::endl;
-            exit(0);
+        case 0x00: { // BRK - Force Interrupt
+            // On BRK, the CPU pushes PC+1 and the status with B flag set,
+            // sets Interrupt Disable, then loads the IRQ/BRK vector at $FFFE/$FFFF.
+            uint16_t return_addr = PC + 1; // PC currently points to the next byte after opcode
+
+            // Push PCH
+            memory->write(0x0100 + SP, (uint8_t)((return_addr >> 8) & 0xFF));
+            SP--;
+            // Push PCL
+            memory->write(0x0100 + SP, (uint8_t)(return_addr & 0xFF));
+            SP--;
+            // Push status with B set (and preserve UNUSED bit)
+            uint8_t pushedP = status | BREAK;
+            memory->write(0x0100 + SP, pushedP);
+            SP--;
+
+            // Set Interrupt Disable
+            setFlag(INTERRUPT_DISABLE, true);
+
+            // Load vector from $FFFE/$FFFF
+            uint8_t lo = memory->read(0xFFFE);
+            uint8_t hi = memory->read(0xFFFF);
+            PC = (uint16_t)((hi << 8) | lo);
+            break;
+        }
+
+        case 0xF8: { // SED - Set Decimal Mode
+            setFlag(DECIMAL_MODE, true);
+            break;
+        }
+        case 0xD8: { // CLD - Clear Decimal Mode
+            setFlag(DECIMAL_MODE, false);
+            break;
+        }
 
         default:
             std::cerr << "Opcode desconhecido: $" << std::hex << (int)opcode << std::endl;

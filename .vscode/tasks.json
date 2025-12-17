@@ -1,26 +1,26 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Build Emulator",
-            "type": "shell",
-            "command": "g++",
-            "args": [
-                "-std=c++17",
-                "-Wall",
-                "-Wextra",
-                "-O2",
-                "main.cpp",
-                "memory/memory.cpp",
-                "cpu/mos6502r.cpp",
-                "-o",
-                "${workspaceFolder}/emulator"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "problemMatcher": ["$gcc"]
-        }
-    ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Emulator",
+			"type": "shell",
+			"command": "g++",
+			"args": [
+				"-std=c++17",
+				"-Wall",
+				"-Wextra",
+				"-O2",
+				"main.cpp",
+				"memory/memory.cpp",
+				"cpu/mos6502r.cpp",
+				"-o",
+				"${workspaceFolder}/emulator"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": ["$gcc"]
+		}
+	]
 }

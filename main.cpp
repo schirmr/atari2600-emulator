@@ -20,5 +20,6 @@ int main() {
         cpu.cpuClock();
     }*/
 
+    system("pause");
     return 0;
 }
