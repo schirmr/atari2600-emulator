@@ -91,11 +91,11 @@ Este é um projeto de aprendizado meu, mas que pode evoluir para algo maior.
 - [x] Passa ROMs de teste e homebrew simples
 
 ### ** Etapa 4 — Bus, RIOT e Mapeamento (atual)**
-- [ ] Espelhamento de RAM (Mirroring $00xx <-> $01xx para Stack)
+- [x] Espelhamento de RAM (Mirroring $00xx <-> $01xx para Stack)
 - [ ] Espelhamento de Registradores TIA ($00-$0D repetidos a cada 64 bytes)
-- [ ] Chip RIOT (6532): Implementação básica
-- [ ] RIOT Timers: `INTIM` e escrita em `TIM64T` (decremento por clock)
-- [ ] Leitura de Inputs básicos via RIOT (`SWCHA` / `SWCHB`)
+- [x] Chip RIOT (6532): Implementação básica
+- [x] RIOT Timers: `INTIM` e escrita em `TIM64T` (decremento por clock)
+- [x] Leitura de Inputs básicos via RIOT (`SWCHA` / `SWCHB`)
 
 ### ** Etapa 5 — TIA e Sincronização (atual)**
 - [ ] Sincronização de Clock CPU <-> TIA (Proporção 1:3)
