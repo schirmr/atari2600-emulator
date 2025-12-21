@@ -15,16 +15,16 @@ O projeto está em construção.
 
 ## Como Rodar o Projeto
 
-Este projeto foi configurado para ser facilmente executado no **VS Code**, em qualquer sistema operacional:
+Este projeto foi configurado para ser facilmente executado no **VS Code**, nos seguintes sistemas operacionais:
 
 ✔ Windows  
 ✔ Linux  
-✔ macOS  
 
 ### **Rodar com VS Code**
 1. Instale a extensão **C/C++** (Microsoft)
 2. Abra a pasta do projeto no VS Code
-3. Caso esteja no Linux, rode o `./requirements.sh` (para instalar dependências)
+3. Caso esteja no Linux, rode o `./requirements.sh` (para instalar dependências).
+Se estiver no Windows, procure um tutorial para baixar os compiladores de C++ via MSYS2.
 4. Pressione: **Ctrl + Shift + B**
 5. O VS Code irá compilar e gerar o executável:
    - `emulator.exe` no Windows  
@@ -35,25 +35,11 @@ Este projeto foi configurado para ser facilmente executado no **VS Code**, em qu
 
 ## Sobre o Projeto
 
-Atualmente, estou construindo um **emulador modularizado**, começando pelo núcleo mais importante:  
-**a CPU 6507**, que é praticamente um MOS 6502 simplificado (usado no Atari).
+Este é um emulador de Atari 2600 em desenvolvimento, escrito em C++ moderno.
 
-Meu primeiro objetivo é:
+O projeto já superou a fase de implementação da CPU e atualmente possui uma arquitetura de sistema completa e funcional. O núcleo do emulador é capaz de carregar ROMs comerciais (como Space Invaders), realizar o processo de boot, inicializar a memória e executar o loop principal do jogo com precisão de ciclos.
 
-- Executar instruções simples (como `LDA #imediato`)
-- Ler bytes da memória
-- Avançar o Program Counter (PC)
-- Criar um ciclo de clock básico da CPU
-
-Depois, irei expandir para:
-
-- Instruções completas da CPU
-- TIA (Television Interface Adaptor)
-- RIOT (I/O + timers)
-- Carregamento de ROMs
-- Debugger simples
-
-Este é um projeto de aprendizado meu, mas que pode evoluir para algo maior.
+Atualmente o emulador já tem a lógica interna simulada, porém não há interface gráfica nenhuma, apenas o debug do jogo no terminal que printa o dumpState de todos os registradores.
 
 ---
 
@@ -90,12 +76,13 @@ Este é um projeto de aprendizado meu, mas que pode evoluir para algo maior.
 - [x] IRQ e NMI (estrutura base)
 - [x] Passa ROMs de teste e homebrew simples
 
-### ** Etapa 4 — Bus, RIOT e Mapeamento (atual)**
+### ** Etapa 4 — Bus, RIOT e Mapeamento (concluida)**
 - [x] Espelhamento de RAM (Mirroring $00xx <-> $01xx para Stack)
-- [ ] Espelhamento de Registradores TIA ($00-$0D repetidos a cada 64 bytes)
+- [x] Espelhamento de Registradores TIA ($00-$0D repetidos a cada 64 bytes)
 - [x] Chip RIOT (6532): Implementação básica
 - [x] RIOT Timers: `INTIM` e escrita em `TIM64T` (decremento por clock)
 - [x] Leitura de Inputs básicos via RIOT (`SWCHA` / `SWCHB`)
+- [x] Esqueleto do TIA (falso para testes)
 
 ### ** Etapa 5 — TIA e Sincronização (atual)**
 - [ ] Sincronização de Clock CPU <-> TIA (Proporção 1:3)

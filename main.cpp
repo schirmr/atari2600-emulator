@@ -12,13 +12,13 @@ int main() {
     std::cout << "Starting Space Invaders emulation...\n";
     std::cout << "PC Inicial: " << std::hex << cpu.PC << "\n";
 
-    for(long i = 0; i < 2000000; i++){
+    for(long i = 0; i < 20000; i++){ // roda 20000 instruções do jogo (caso na o trave)
         cpu.cpuClock();
 
-        if(i % 500000 == 0){
-            std::cout << "Ciclos: " << i << "\n"; // debug
-            cpu.dumpState();
-        }
+        memory.step(3); // rodando cada instrução gastando uma media de 3 clocks
+
+        cpu.dumpState();
+
     }
 
     return 0;

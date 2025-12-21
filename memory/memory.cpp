@@ -13,17 +13,21 @@ Memory::Memory() {
 }
 
 uint8_t Memory::read(uint16_t addr) const {
+    // 1. Checa a ROM
+    if (addr & 0xF000) { // acesso a rom ($F000-$FFFF)
+        return rom[addr & 0x0FFF]; // offset 0-4095
+    }
+    // 2. TIA read
+    if ((addr & 0x0080) == 0) { // TIA read ($0000-$007F)
+        return const_cast<Tia&>(tia).read(addr); // read do TIA pode limpar flags
+    }
+    // 3. Ram e stack
     if ((addr & 0x0280) == 0x0080) {  // Acesso à RAM e Stack ($0080-$00FF e $0180-$01FF)
         return riot.ram[addr & 0x007F]; // map para 0-127 dentro do array da RAM
     }
-
+    // 4. Riot I/O e Timer
     if ((addr & 0x0280) == 0x0280) {  // leitura registradores PIA (Timer/Ports) - $0280-$0297
-        return 0x00; 
-        // implementar o timer dps
-    }
-
-    if (addr & 0xF000) { // acesso a rom ($F000-$FFFF)
-        return rom[addr & 0x0FFF]; // offset 0-4095
+        return const_cast<Riot&>(riot).ioRead(addr); 
     }
 
     // acesso ao TIA
@@ -32,13 +36,18 @@ uint8_t Memory::read(uint16_t addr) const {
 }
 
 void Memory::write(uint16_t addr, uint8_t data) {
+    if((addr & 0x0080) == 0) { // Escrita no TIA ($0000-$007F)
+        tia.write(addr, data);
+        return;
+    }
+
     if ((addr & 0x0280) == 0x0080) {     // Escrita na RAM e Stack ($0080-$00FF e $0180-$01FF)
         riot.ram[addr & 0x007F] = data;
         return;
     }
 
     if ((addr & 0x0280) == 0x0280) {  // escrita registradores PIA (Timer/Ports) - $0280-$0297
-        // configurar timer
+        riot.ioWrite(addr, data);
         return;
     }
 

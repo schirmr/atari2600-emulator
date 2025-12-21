@@ -13,6 +13,8 @@
 				"main.cpp",
 				"memory/memory.cpp",
 				"cpu/mos6502r.cpp",
+				"memory/riot.cpp",
+				"tia/tia.cpp",
 				"-o",
 				"${workspaceFolder}/emulator"
 			],
