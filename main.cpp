@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstdlib>
 #include "./memory/memory.hpp"
 #include "./cpu/mos6502r.hpp"
 
@@ -9,6 +10,9 @@ int main() {
     memory.loadROM("./tests/space_invaders.a26");
     cpu.reset();
 
+    const char* venv = std::getenv("VERBOSE");
+    cpu.verbose = (venv && venv[0] != '0');
+
     std::cout << "Starting Space Invaders emulation...\n";
     std::cout << "PC Inicial: " << std::hex << cpu.PC << "\n";
 
@@ -16,8 +20,9 @@ int main() {
         cpu.cpuClock();
 
         memory.step(3); // rodando cada instrução gastando uma media de 3 clocks
-
-        cpu.dumpState();
+        if(cpu.verbose){
+            cpu.dumpState();
+        }
 
     }
 

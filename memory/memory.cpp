@@ -38,6 +38,16 @@ uint8_t Memory::read(uint16_t addr) const {
 void Memory::write(uint16_t addr, uint8_t data) {
     if((addr & 0x0080) == 0) { // Escrita no TIA ($0000-$007F)
         tia.write(addr, data);
+
+        if (tia.isWSYNCActive()) {
+            while (tia.isWSYNCActive()) {
+                // TIA roda 3 clocks por ciclo da CPU
+                tia.clock();
+                tia.clock();
+                tia.clock();
+                riot.step(1);
+            }
+        }
         return;
     }
 

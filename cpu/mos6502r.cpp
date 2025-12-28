@@ -1391,12 +1391,17 @@ void Mos6502::cpuClock(){
             break;
         }
 
-
-
         default:
-            std::cerr << "Opcode desconhecido: $" << std::hex << (int)opcode << std::endl;
-            dumpState();
-            exit(1);
+            if(!warnedUnknownOpcode){
+                std::cerr << "Opcode desconhecido: $" << std::hex << (int)opcode << std::endl;
+                if(verbose){
+                    dumpState();
+                }
+                warnedUnknownOpcode = true;
+            }
+            // tratar opcode desconhecido como NOP de 2 ciclos para seguir a execução
+            cycles += 2;
+            break;
     }
 }
 

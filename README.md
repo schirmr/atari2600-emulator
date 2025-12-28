@@ -84,13 +84,13 @@ Atualmente o emulador já tem a lógica interna simulada, porém não há interf
 - [x] Leitura de Inputs básicos via RIOT (`SWCHA` / `SWCHB`)
 - [x] Esqueleto do TIA (falso para testes)
 
-### ** Etapa 5 — TIA e Sincronização (atual)**
-- [ ] Sincronização de Clock CPU <-> TIA (Proporção 1:3)
-- [ ] Implementação do Registrador `WSYNC` (Halt CPU até fim da scanline)
-- [ ] Lógica de `VSYNC` e `VBLANK` (Controle de frame)
-- [ ] Estrutura básica de renderização (Scanline Loop)
+### ** Etapa 5 — TIA e Sincronização (concluida)**
+- [x] Sincronização de Clock CPU <-> TIA (Proporção 1:3)
+- [x] Implementação do Registrador `WSYNC` (halt da CPU até o fim da scanline)
+- [x] Lógica básica de `VSYNC` e `VBLANK` (controle de frame simplificado)
+- [x] Estrutura básica de renderização (scanline loop com placeholder de cor de fundo)
 
-### ** Etapa 6 — Gráficos Básicos**
+### ** Etapa 6 — Gráficos Básicos (atual)**
 - [ ] Janela de saída (SDL2 / SFML / OpenGL)
 - [ ] Renderização de Cor de Fundo (`COLUBK`)
 - [ ] Renderização de Playfield (`PF0`, `PF1`, `PF2`) com espelhamento/reflexão

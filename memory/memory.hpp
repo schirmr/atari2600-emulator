@@ -13,7 +13,13 @@ public:
     void loadROM(const std::string& path); //
 
     void step(uint32_t cycles){
-        riot.step(cycles);
+        for(uint32_t i = 0; i < cycles; i++){
+            riot.step(1);
+
+            tia.clock();
+            tia.clock();
+            tia.clock();
+        }
     }
 
     Riot riot;

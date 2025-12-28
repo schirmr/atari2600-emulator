@@ -24,6 +24,9 @@ class Mos6502 {
         uint64_t cycles = 0;
 
         Memory* memory;
+
+        bool verbose = false; 
+        bool warnedUnknownOpcode = false;
     public:
         Mos6502(Memory* mem);
 
@@ -68,7 +71,7 @@ class Mos6502 {
         uint16_t imm(); // modo imediato
         uint16_t zp(); // modo zero page
         uint16_t abs(); // modo absoluto
-        uint16_t absx_no_cross(); // modo absoluto,X sem checagem de cruzamento de página
+        uint16_t absx_no_cross(); // modo absoluto,X sem checagem de cruzamento de pagina
         uint16_t zpx(); // zero-page wrap
         uint16_t zpy(); // zero-page wrap using Y
         uint16_t absx();
