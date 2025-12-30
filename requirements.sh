@@ -18,6 +18,10 @@ echo "➡️  Instalando build-essential..."
 apt install -y build-essential
 
 echo
+echo "➡️  Instalando SDL2 (para janela no Linux)..."
+apt install -y libsdl2-dev
+
+echo
 echo "✔️  Instalação concluída!"
 echo "✔️  Dependências essenciais instaladas com sucesso."
 echo "======================================="

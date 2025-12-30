@@ -10,7 +10,7 @@ public:
     uint8_t read(uint16_t addr) const;
     void write(uint16_t addr, uint8_t data);
     void dump(uint16_t start, uint16_t end) const; // 
-    void loadROM(const std::string& path); //
+    bool loadROM(const std::string& path); //
 
     void step(uint32_t cycles){
         for(uint32_t i = 0; i < cycles; i++){

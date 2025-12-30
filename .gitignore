@@ -24,6 +24,3 @@ Makefile
 # OS files
 Thumbs.db
 .DS_Store
-
-# Ignore main executable (linux)
-emulator

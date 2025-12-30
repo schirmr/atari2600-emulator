@@ -11,18 +11,70 @@
 				"-Wextra",
 				"-O2",
 				"main.cpp",
+				"emulator/emulator.cpp",
+				"graphics/win32_renderer.cpp",
+				"graphics/tia_palette.cpp",
 				"memory/memory.cpp",
 				"cpu/mos6502r.cpp",
 				"memory/riot.cpp",
 				"tia/tia.cpp",
 				"-o",
-				"${workspaceFolder}/emulator"
+				"${workspaceFolder}/emulator.exe",
+				"-lgdi32",
+				"-luser32"
 			],
+			"linux": {
+				"command": "g++",
+				"args": [
+					"-std=c++17",
+					"-Wall",
+					"-Wextra",
+					"-O2",
+					"main.cpp",
+					"emulator/emulator.cpp",
+					"memory/memory.cpp",
+					"cpu/mos6502r.cpp",
+					"memory/riot.cpp",
+					"tia/tia.cpp",
+					"graphics/tia_palette.cpp",
+					"graphics/sdl2_renderer.cpp",
+					"-o",
+					"${workspaceFolder}/emulator",
+					"-lSDL2"
+				]
+			},
 			"group": {
 				"kind": "build",
 				"isDefault": true
 			},
-			"problemMatcher": ["$gcc"]
+			"problemMatcher": [
+				"$gcc"
+			]
+		},
+		{
+			"label": "Run Emulator",
+			"type": "shell",
+			"command": "${workspaceFolder}/emulator.exe",
+			"linux": {
+				"command": "${workspaceFolder}/emulator"
+			}
+		},
+		{
+			"label": "Clean",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Remove-Item -ErrorAction SilentlyContinue -Force *.o, emulator, emulator.exe"
+			],
+			"linux": {
+				"command": "bash",
+				"args": [
+					"-lc",
+					"rm -f -- *.o emulator emulator.exe"
+				]
+			}
 		}
 	]
 }

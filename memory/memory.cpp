@@ -74,15 +74,16 @@ void Memory::dump(uint16_t start, uint16_t end) const{
     }
 }
 
-void Memory::loadROM(const std::string& path){
+bool Memory::loadROM(const std::string& path) {
     std::ifstream file(path, std::ios::binary);
-    if(!file){
+    if (!file) {
         std::cerr << "Erro ao abrir ROM\n";
-        return;
+        return false;
     }
-    
+
     file.read((char*)rom, sizeof(rom));
-    romSize = (uint16_t)file.gcount(); // tamanho real lido
+    romSize = (uint16_t)file.gcount();
 
     std::cout << "ROM carregada: " << romSize << " bytes\n";
+    return true;
 }

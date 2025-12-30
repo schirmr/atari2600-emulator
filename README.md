@@ -90,11 +90,11 @@ Atualmente o emulador já tem a lógica interna simulada, porém não há interf
 - [x] Lógica básica de `VSYNC` e `VBLANK` (controle de frame simplificado)
 - [x] Estrutura básica de renderização (scanline loop com placeholder de cor de fundo)
 
-### ** Etapa 6 — Gráficos Básicos (atual)**
-- [ ] Janela de saída (SDL2 / SFML / OpenGL)
-- [ ] Renderização de Cor de Fundo (`COLUBK`)
-- [ ] Renderização de Playfield (`PF0`, `PF1`, `PF2`) com espelhamento/reflexão
-- [ ] Paleta de Cores NTSC/PAL
+### ** Etapa 6 — Gráficos Básicos (concluida)**
+- [x] Janela de saída (Win32 no Windows; SDL2 no Linux)
+- [x] Renderização de Cor de Fundo (`COLUBK`)
+- [x] Renderização de Playfield (`PF0`, `PF1`, `PF2`) com espelhamento/reflexão
+- [x] Paleta de Cores (aproximação NTSC/PAL via `TIA_PALETTE=NTSC|PAL`)
 
 ### ** Etapa 7 — Sprites e Colisões (TIA Avançado)**
 - [ ] Renderização de Players (`GRP0`, `GRP1`) e Missiles

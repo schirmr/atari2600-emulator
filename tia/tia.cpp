@@ -12,8 +12,43 @@ void Tia::clock() {
 
     if (!vblankActive && !vsyncActive) {
         if (tiaCycle < VISIBLE_CYCLES) {
+            auto pfBitAt = [&](int x) -> bool {
+                int block = x / 4; // cada bit do playfield dura 4 clocks -> 160 px
+                bool reflect = (registers[0x0A] & 0x01) != 0; // CTRLPF bit0 = REFLECT
+
+                auto leftBit = [&](int idx) -> bool {
+                    if (idx < 4) { // PF0 (bits D4..D7) mapeados da esquerda para direita
+                        uint8_t pf0 = registers[0x0D];
+                        return ((pf0 >> (4 + idx)) & 0x01) != 0;
+                    } else if (idx < 12) { // PF1 desenhado MSB->LSB
+                        uint8_t pf1 = registers[0x0E];
+                        int bit = 7 - (idx - 4);
+                        return ((pf1 >> bit) & 0x01) != 0;
+                    } else { // PF2 desenhado LSB->MSB
+                        uint8_t pf2 = registers[0x0F];
+                        int bit = (idx - 12);
+                        return ((pf2 >> bit) & 0x01) != 0;
+                    }
+                };
+
+                if (block < 20) {
+                    return leftBit(block);
+                } else {
+                    int r = block - 20;
+                    if (reflect) {
+                        return leftBit(19 - r);
+                    } else {
+                        // sem reflexao: repete mesma ordem da metade esquerda
+                        return leftBit(r);
+                    }
+                }
+            };
+
+            bool pf = pfBitAt(tiaCycle);
+            uint8_t colupf = registers[0x08];
             uint8_t colubk = registers[0x09];
-            framebuffer[scanline][tiaCycle] = colubk;
+            uint8_t color = pf ? colupf : colubk;
+            framebuffer[scanline][tiaCycle] = color;
         }
     }
     if (tiaCycle >= SCANLINE_CYCLES) {
@@ -73,7 +108,7 @@ void Tia::write(uint16_t addr, uint8_t val) {
     
     registers[reg] = val;
 
-    if(reg == 0x09) std::cout << "Cor de fundo: " << std::hex << (int)val << "\n"; // debug das cores mudando
+    if(debug && reg == 0x09) std::cout << "Cor de fundo: " << std::hex << (int)val << "\n"; // debug das cores mudando
 
     if(reg == 0x02) {
         wsync = true; 

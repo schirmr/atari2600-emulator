@@ -21,6 +21,8 @@ private:
     // Framebuffer básico por scanline (cor de fundo apenas)
     uint8_t framebuffer[FRAME_LINES][VISIBLE_CYCLES]{};
 
+    bool debug = false; // controla logs de debug
+
 public:
     Tia(); // Construtor
     
@@ -31,6 +33,8 @@ public:
 
     uint8_t read(uint16_t addr);
     void write(uint16_t addr, uint8_t val);
+    void setDebug(bool enabled) { debug = enabled; }
+    bool isDebug() const { return debug; }
     
     bool isWSYNCActive() const { return wsync; }
     bool inVBlank() const { return vblankActive; }
@@ -38,6 +42,7 @@ public:
     int getScanline() const { return scanline; }
     int getCycle() const { return tiaCycle; }
     const uint8_t* getScanlineBuffer(int y) const { return (y >= 0 && y < FRAME_LINES) ? framebuffer[y] : nullptr; }
+    const uint8_t* getFrameBuffer() const { return &framebuffer[0][0]; }
     
     uint8_t getReg(uint8_t index) const { return registers[index]; } // retorna no próprio hpp
 };
