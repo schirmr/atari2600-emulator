@@ -29,7 +29,7 @@ private:
     int scaleX = 1;
     int scaleY = 1;
 
-    int yOffset = 40;
+    int yOffset = 0;
 
     tia_palette::Mode paletteMode = tia_palette::Mode::NTSC;
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);

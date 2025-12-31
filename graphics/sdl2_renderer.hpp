@@ -47,7 +47,7 @@ private:
     int scaleX = 1;
     int scaleY = 1;
 
-    int yOffset = 40;
+    int yOffset = 0;
 
     bool quit = false;
     bool sdlInitialized = false;
