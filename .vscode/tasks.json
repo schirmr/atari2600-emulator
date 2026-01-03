@@ -12,7 +12,7 @@
 				"-O2",
 				"main.cpp",
 				"emulator/emulator.cpp",
-				"graphics/win32_renderer.cpp",
+				"graphics/sdl2_renderer.cpp",
 				"graphics/tia_palette.cpp",
 				"memory/memory.cpp",
 				"cpu/mos6502r.cpp",
@@ -20,8 +20,9 @@
 				"tia/tia.cpp",
 				"-o",
 				"${workspaceFolder}/emulator.exe",
-				"-lgdi32",
-				"-luser32"
+				"-lmingw32",
+				"-lSDL2main",
+				"-lSDL2"
 			],
 			"linux": {
 				"command": "g++",
@@ -56,7 +57,7 @@
 			"type": "shell",
 			"command": "${workspaceFolder}/emulator.exe",
 			"linux": {
-				"command": "${workspaceFolder}/emulator"
+				"command": "${workspaceFolder}/emulator_app"
 			}
 		},
 		{

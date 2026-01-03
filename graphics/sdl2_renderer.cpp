@@ -1,8 +1,7 @@
-#ifndef _WIN32
-
 #include "sdl2_renderer.hpp"
 
 #include <SDL2/SDL.h>
+
 #include <cstdlib>
 
 // ------------------------------
@@ -169,5 +168,3 @@ Sdl2Renderer::~Sdl2Renderer() {
         sdlInitialized = false;
     }
 }
-
-#endif

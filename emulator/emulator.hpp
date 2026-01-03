@@ -3,11 +3,7 @@
 #include "../memory/memory.hpp"
 #include "../cpu/mos6502r.hpp"
 
-#ifdef _WIN32
-#include "../graphics/win32_renderer.hpp"
-#else
 #include "../graphics/sdl2_renderer.hpp"
-#endif
 
 class Emulator {
 public:
@@ -36,11 +32,7 @@ private:
     Memory memory;
     Mos6502 cpu;
 
-#ifdef _WIN32
-    Win32Renderer renderer;
-#else
     Sdl2Renderer renderer;
-#endif
 
     // Guarda o scanline do ciclo anterior para detectar "virada" de frame.
     int lastScanline = 0;

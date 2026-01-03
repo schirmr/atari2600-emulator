@@ -1,9 +1,7 @@
 #pragma once
 
-#ifndef _WIN32 // Compila apenas se não for windows, pois é um renderer SDL2 (Linux)
-
 // ------------------------------
-// SDL2 Renderer (Linux)
+// SDL2 Renderer (Windows/Linux)
 // ------------------------------
 
 #include <cstdint>
@@ -56,5 +54,3 @@ private:
     // Buffer de pixels em CPU (ARGB8888). Depois copiamos para a SDL_Texture.
     std::vector<uint32_t> pixels;
 };
-
-#endif

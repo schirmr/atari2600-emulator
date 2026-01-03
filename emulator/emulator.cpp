@@ -3,12 +3,7 @@
 #include <cstdlib>
 #include <chrono>
 #include <thread>
-
-#ifdef _WIN32
-#include <windows.h>
-#else
 #include <SDL2/SDL.h>
-#endif
 
 // Construtor:
 // - Conecta a CPU no barramento (Memory)
@@ -78,7 +73,7 @@ void Emulator::run(){
     memory.tia.setDebug(tenv && tenv[0] != '0');
 
     // Limita a velocidade a ~60 FPS (NTSC).
-    // Sem isso, o emulador roda no mximo do PC e o jogo fica acelerado.
+    // Sem isso, o emulador roda no máximo do PC e o jogo fica acelerado.
     constexpr auto targetFrameTime = std::chrono::microseconds(16667); // ~60Hz
 
     while (true) {
@@ -87,7 +82,7 @@ void Emulator::run(){
         // Processa eventos da janela (fechar, ESC, etc).
         renderer.poll();
 
-        // Le teclado (Win32 ou SDL) uma vez por frame.
+        // Lê teclado (Win32 ou SDL) uma vez por frame.
         bool left = false;
         bool right = false;
         bool up = false;
@@ -96,16 +91,6 @@ void Emulator::run(){
         bool gameSelect = false;
         bool gameReset = false;
 
-#ifdef _WIN32
-        left  = (GetAsyncKeyState(VK_LEFT)  & 0x8000) != 0;
-        right = (GetAsyncKeyState(VK_RIGHT) & 0x8000) != 0;
-        up    = (GetAsyncKeyState(VK_UP)    & 0x8000) != 0;
-        down  = (GetAsyncKeyState(VK_DOWN)  & 0x8000) != 0;
-        fire  = (GetAsyncKeyState(VK_SPACE) & 0x8000) != 0;
-        gameSelect = (GetAsyncKeyState('Z') & 0x8000) != 0;
-        gameReset  = (GetAsyncKeyState('X') & 0x8000) != 0;
-#else
-        // SDL2: garante que o estado do teclado esteja atualizado
         SDL_PumpEvents();
 
         const Uint8* keys = SDL_GetKeyboardState(nullptr);
@@ -117,7 +102,6 @@ void Emulator::run(){
         fire  = keys[SDL_SCANCODE_SPACE] != 0;
         gameSelect = keys[SDL_SCANCODE_Z] != 0;
         gameReset  = keys[SDL_SCANCODE_X] != 0;
-#endif
         // 3) Teclado -> Joystick (SWCHA) (active low)
         // P0: bit7=Right, bit6=Left, bit5=Down, bit4=Up
         uint8_t swcha = 0xFF;
@@ -140,8 +124,8 @@ void Emulator::run(){
         memory.tia.setTrigger0Pressed(fire);
         memory.tia.setTrigger1Pressed(false);
 
-        // Emula CPU+TIA at completar 1 frame inteiro.
-        // Isso deixa o emulador bem mais rpido e reduz overhead de input/poll.
+        // Emula CPU+TIA até completar 1 frame inteiro.
+        // Isso deixa o emulador bem mais rápido e reduz overhead de input/poll.
         while (!endOfFrame()) {
             step();
             if (renderer.shouldClose()) {
