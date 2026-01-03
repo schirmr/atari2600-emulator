@@ -51,14 +51,9 @@ Tia::Tia() {
 }
 
 int Tia::strobeToVisibleX() const {
-    // Aproximação comum: início da área visível acontece após o “left border”.
-    // Muitos kernels usam uma calibração equivalente a (colorClock - 68) mod 160.
-    // O TIA também tem um pequeno atraso (pipeline) entre o strobe e o primeiro pixel.
-    // Para melhorar o alinhamento (e evitar limites de movimento “estranhos”), aplicamos:
-    // - offset fixo (pipeline)
-    // - wrap em 160 pixels (comportamento real do contador horizontal)
-    static constexpr int STROBE_PIPELINE_DELAY = 5;
-    int x = tiaCycle - HBLANK_CYCLES - STROBE_PIPELINE_DELAY;
+    static constexpr int STROBE_PIPELINE_DELAY = 0;
+    static constexpr int STROBE_X_OFFSET = 8; // 1 bloco de playfield (cada bit PF = 4px)
+    int x = tiaCycle - HBLANK_CYCLES - STROBE_PIPELINE_DELAY + STROBE_X_OFFSET;
     x %= VISIBLE_CYCLES;
     if (x < 0) x += VISIBLE_CYCLES;
     return x;

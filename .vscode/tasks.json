@@ -12,6 +12,7 @@
 				"-O2",
 				"main.cpp",
 				"emulator/emulator.cpp",
+				"ui/rom_picker.cpp",
 				"graphics/sdl2_renderer.cpp",
 				"graphics/tia_palette.cpp",
 				"memory/memory.cpp",
@@ -20,8 +21,6 @@
 				"tia/tia.cpp",
 				"-o",
 				"${workspaceFolder}/emulator.exe",
-				"-lmingw32",
-				"-lSDL2main",
 				"-lSDL2"
 			],
 			"linux": {
@@ -33,6 +32,7 @@
 					"-O2",
 					"main.cpp",
 					"emulator/emulator.cpp",
+					"ui/rom_picker.cpp",
 					"memory/memory.cpp",
 					"cpu/mos6502r.cpp",
 					"memory/riot.cpp",

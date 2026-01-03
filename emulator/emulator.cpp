@@ -3,21 +3,14 @@
 #include <cstdlib>
 #include <chrono>
 #include <thread>
+
 #include <SDL2/SDL.h>
 
 // Construtor:
 // - Conecta a CPU no barramento (Memory)
-// - Inicializa o renderer
+// - O renderer é inicializado no run() (depois de escolher a ROM)
 Emulator::Emulator(): cpu(&memory){
-    // Inicializamos o renderer aqui para o main ficar simples.
-    //
-    // Para testes de fidelidade do TIA, usarei a resolução nativa do frame:
-    // - 160 pixels horizontais visíveis
-    // - 262 scanlines (NTSC frame completo)
-    // Escala 3x (pixel-perfect). A resolução emulada continua 160x262.
-    if (!renderer.init(160, 262, 3, 3)) {
-        std::cerr << "Falha ao inicializar renderer\n";
-    }
+    rendererInitialized = false;
 }
 
 bool Emulator::loadROM(const std::string& path){
@@ -62,6 +55,18 @@ bool Emulator::endOfFrame(){
 
 // Loop principal de emulação
 void Emulator::run(){
+    if (!rendererInitialized) {
+        // Resolução nativa do frame:
+        // - 160 pixels horizontais visíveis
+        // - 262 scanlines (NTSC frame completo)
+        // Escala 3x (pixel-perfect). A resolução emulada continua 160x262.
+        if (!renderer.init(160, 262, 3, 3)) {
+            std::cerr << "Falha ao inicializar renderer\n";
+            return;
+        }
+        rendererInitialized = true;
+    }
+
     // Debug da CPU via variável de ambiente:
     // - VERBOSE=1 imprime dumpState a cada passo.
     const char* venv = std::getenv("VERBOSE");

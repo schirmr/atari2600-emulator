@@ -33,6 +33,7 @@ private:
     Mos6502 cpu;
 
     Sdl2Renderer renderer;
+    bool rendererInitialized = false;
 
     // Guarda o scanline do ciclo anterior para detectar "virada" de frame.
     int lastScanline = 0;

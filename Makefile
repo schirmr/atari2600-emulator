@@ -14,6 +14,7 @@ SDL_LIBS   := $(shell pkg-config --libs sdl2)
 SRCS := \
 	main.cpp \
 	emulator/emulator.cpp \
+	ui/rom_picker.cpp \
 	memory/memory.cpp \
 	cpu/mos6502r.cpp \
 	memory/riot.cpp \
