@@ -7,7 +7,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #else
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #endif
 
 // Construtor:
@@ -105,18 +105,19 @@ void Emulator::run(){
         gameSelect = (GetAsyncKeyState('Z') & 0x8000) != 0;
         gameReset  = (GetAsyncKeyState('X') & 0x8000) != 0;
 #else
-        // SDL: garante que o estado do teclado esteja atualizado
+        // SDL2: garante que o estado do teclado esteja atualizado
         SDL_PumpEvents();
-        const uint8_t* keys = SDL_GetKeyboardState(nullptr);
-        left  = keys[SDL_SCANCODE_LEFT] != 0;
+
+        const Uint8* keys = SDL_GetKeyboardState(nullptr);
+
+        left  = keys[SDL_SCANCODE_LEFT]  != 0;
         right = keys[SDL_SCANCODE_RIGHT] != 0;
-        up    = keys[SDL_SCANCODE_UP] != 0;
-        down  = keys[SDL_SCANCODE_DOWN] != 0;
+        up    = keys[SDL_SCANCODE_UP]    != 0;
+        down  = keys[SDL_SCANCODE_DOWN]  != 0;
         fire  = keys[SDL_SCANCODE_SPACE] != 0;
         gameSelect = keys[SDL_SCANCODE_Z] != 0;
         gameReset  = keys[SDL_SCANCODE_X] != 0;
 #endif
-
         // 3) Teclado -> Joystick (SWCHA) (active low)
         // P0: bit7=Right, bit6=Left, bit5=Down, bit4=Up
         uint8_t swcha = 0xFF;

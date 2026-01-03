@@ -39,7 +39,7 @@
 					"graphics/tia_palette.cpp",
 					"graphics/sdl2_renderer.cpp",
 					"-o",
-					"${workspaceFolder}/emulator",
+					"${workspaceFolder}/emulator_app",
 					"-lSDL2"
 				]
 			},
