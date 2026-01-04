@@ -25,6 +25,13 @@ public:
     Riot riot;
     Tia tia;
 private:
-    uint8_t rom[4096];     // buffer para o cartucho de 4kb
+    enum class CartMapper : uint8_t {
+        None, // ROM <= 4KB (ou espelhada)
+        F8    // 8KB bankswitching (2x4KB) via hotspots $1FF8/$1FF9
+    };
+
+    uint8_t rom[8192];     // buffer para o cartucho (até 8KB neste projeto)
     uint16_t romSize;
+    CartMapper mapper = CartMapper::None;
+    mutable uint8_t activeBank = 0; // usado pelo mapper F8
 };

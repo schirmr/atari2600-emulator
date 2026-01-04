@@ -9,22 +9,44 @@
 Memory::Memory() {
     std::memset(rom, 0, sizeof(rom)); // evitar lixos
     romSize = 0;
+    mapper = CartMapper::None;
+    activeBank = 0;
     
     riot.reset();
 }
 
 uint8_t Memory::read(uint16_t addr) const {
-    // 1. Checa a ROM
-    if (addr & 0xF000) { // acesso a rom ($F000-$FFFF)
-        return rom[addr & 0x0FFF]; // offset 0-4095
+    // Atari 2600 (6507) expõe só 13 bits de endereço no barramento.
+    // Assim, todo endereço 16-bit do CPU é espelhado no range $0000-$1FFF.
+    const uint16_t busAddr = static_cast<uint16_t>(addr & 0x1FFF);
+
+    // 1) Cartucho ROM ($1000-$1FFF)
+    if ((busAddr & 0x1000) != 0) {
+        if (romSize == 0) {
+            return 0xFF;
+        }
+
+        // Bankswitching F8 (8KB): hotspots em $1FF8/$1FF9
+        if (mapper == CartMapper::F8) {
+            if (busAddr == 0x1FF8) {
+                activeBank = 0;
+            } else if (busAddr == 0x1FF9) {
+                activeBank = 1;
+            }
+
+            const uint16_t offset = static_cast<uint16_t>(busAddr & 0x0FFF);
+            const uint16_t index = static_cast<uint16_t>((activeBank * 4096u) + offset);
+            return rom[index & 0x1FFF];
+        }
+
+        // ROM <= 4KB: espelha dentro da janela de 4KB.
+        const uint16_t offset = static_cast<uint16_t>(busAddr & 0x0FFF);
+        return rom[offset % romSize];
     }
     // 2. TIA read
-    if ((addr & 0x0080) == 0) { // TIA read ($0000-$007F)
-        uint8_t v = const_cast<Tia&>(tia).read(addr); // read do TIA pode limpar flags
-
-        // Debug opcional: TRACE_INPUT=1 mostra mudancas no INPT4/INPT5.
-        // TRACE_TIA=1 tambem mostra leituras de colisao (0x00..0x07).
-        // Importante: usamos stderr + flush para aparecer no terminal.
+    if ((busAddr & 0x0080) == 0) { // TIA read ($0000-$007F)
+        uint8_t v = const_cast<Tia&>(tia).read(busAddr); // read do TIA pode limpar flags
+        // Trace opcional de reads no TIA, para depurar inputs e colisões
         static bool trace = false;
         static bool traceInit = false;
         static bool traceTia = false;
@@ -74,12 +96,12 @@ uint8_t Memory::read(uint16_t addr) const {
         return v;
     }
     // 3. Ram e stack
-    if ((addr & 0x0280) == 0x0080) {  // Acesso à RAM e Stack ($0080-$00FF e $0180-$01FF)
-        return riot.ram[addr & 0x007F]; // map para 0-127 dentro do array da RAM
+    if ((busAddr & 0x0280) == 0x0080) {  // Acesso à RAM e Stack ($0080-$00FF e $0180-$01FF)
+        return riot.ram[busAddr & 0x007F]; // map para 0-127 dentro do array da RAM
     }
     // 4. Riot I/O e Timer
-    if ((addr & 0x0280) == 0x0280) {  // leitura registradores PIA (Timer/Ports) - $0280-$0297
-        return const_cast<Riot&>(riot).ioRead(addr); 
+    if ((busAddr & 0x0280) == 0x0280) {  // leitura registradores PIA (Timer/Ports) - $0280-$0297
+        return const_cast<Riot&>(riot).ioRead(busAddr); 
     }
 
     // acesso ao TIA
@@ -88,7 +110,21 @@ uint8_t Memory::read(uint16_t addr) const {
 }
 
 void Memory::write(uint16_t addr, uint8_t data) {
-    if((addr & 0x0080) == 0) { // Escrita no TIA ($0000-$007F)
+    const uint16_t busAddr = static_cast<uint16_t>(addr & 0x1FFF);
+
+    // Cartucho ROM ($1000-$1FFF): bankswitching pode ser disparado por acesso (read ou write).
+    if ((busAddr & 0x1000) != 0) {
+        if (mapper == CartMapper::F8) {
+            if (busAddr == 0x1FF8) {
+                activeBank = 0;
+            } else if (busAddr == 0x1FF9) {
+                activeBank = 1;
+            }
+        }
+        return; // escrita em ROM não faz nada (além do bankswitch acima)
+    }
+
+    if((busAddr & 0x0080) == 0) { // Escrita no TIA ($0000-$007F)
         // Trace opcional de writes no TIA, para depurar tiros (ENAMx/RESMx/GRPx)
         static bool traceTiaW = false;
         static bool traceInitW = false;
@@ -118,7 +154,7 @@ void Memory::write(uint16_t addr, uint8_t data) {
             }
         }
 
-        tia.write(addr, data);
+        tia.write(busAddr, data);
 
         if (tia.isWSYNCActive()) {
             while (tia.isWSYNCActive()) {
@@ -132,13 +168,13 @@ void Memory::write(uint16_t addr, uint8_t data) {
         return;
     }
 
-    if ((addr & 0x0280) == 0x0080) {     // Escrita na RAM e Stack ($0080-$00FF e $0180-$01FF)
-        riot.ram[addr & 0x007F] = data;
+    if ((busAddr & 0x0280) == 0x0080) {     // Escrita na RAM e Stack ($0080-$00FF e $0180-$01FF)
+        riot.ram[busAddr & 0x007F] = data;
         return;
     }
 
-    if ((addr & 0x0280) == 0x0280) {  // escrita registradores PIA (Timer/Ports) - $0280-$0297
-        riot.ioWrite(addr, data);
+    if ((busAddr & 0x0280) == 0x0280) {  // escrita registradores PIA (Timer/Ports) - $0280-$0297
+        riot.ioWrite(busAddr, data);
         return;
     }
 
@@ -162,9 +198,28 @@ bool Memory::loadROM(const std::string& path) {
         return false;
     }
 
+    std::memset(rom, 0, sizeof(rom));
     file.read((char*)rom, sizeof(rom));
-    romSize = (uint16_t)file.gcount();
+    romSize = static_cast<uint16_t>(file.gcount());
 
-    std::cout << "ROM carregada: " << romSize << " bytes\n";
+    // Detecta mapper por tamanho (mínimo necessário para os testes).
+    mapper = CartMapper::None;
+    activeBank = 0;
+
+    if (romSize == 8192) {
+        mapper = CartMapper::F8;
+        // Em muitos carts F8, o reset vector fica no banco alto.
+        activeBank = 1;
+    } else if (romSize > 8192) {
+        std::cerr << "Aviso: ROM > 8KB (" << romSize
+                  << " bytes). Este emulador carrega apenas os primeiros 8192 bytes.\n";
+        romSize = 8192;
+    }
+
+    std::cout << "ROM carregada: " << romSize << " bytes";
+    if (mapper == CartMapper::F8) {
+        std::cout << " (mapper F8)";
+    }
+    std::cout << "\n";
     return true;
 }
